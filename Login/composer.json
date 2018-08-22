@@ -1,0 +1,16 @@
+{
+    "require": {
+        "grandnain/ratchet": "dev-master",
+        "php-di/php-di": "^6.0",
+        "doctrine/orm": "^2.5",
+        "symfony/yaml": "^3.3",
+        "monolog/monolog": "^1.23",
+        "doctrine/annotations": "^1.2"
+    },
+    "autoload": {
+	    "psr-4": {
+            "Hetwan\\": "src/",
+            "App\\": "app/"
+        }
+    }
+}

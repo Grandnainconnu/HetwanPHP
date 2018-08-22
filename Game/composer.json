@@ -1,0 +1,18 @@
+{
+    "require": {
+        "doctrine/orm": "^2.5",
+        "php-di/php-di": "^5.4",
+        "symfony/yaml": "^3.3",
+        "monolog/monolog": "^1.23",
+        "doctrine/annotations": "^1.2",
+        "react/dns": "^0.4.11",
+        "nxp/math-executor": "^0.2.0",
+        "grandnain/ratchet": "dev-master"
+    },
+    "autoload": {
+	    "psr-4": {
+            "Hetwan\\": "src/",
+            "App\\": "app/"
+        }
+    }
+}

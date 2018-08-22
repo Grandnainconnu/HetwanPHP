@@ -1,8 +1,0 @@
-HetwanPHP - v0.1
-- Basic authentification
-
-HetwanPHP - v0.2
-- Add a pool to manage accounts and socket clients
-- Add ExchangeServer to listen game servers
-- Add game server selection
-- Add game server connection

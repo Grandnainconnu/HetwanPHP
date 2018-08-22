@@ -1,0 +1,23 @@
+server:
+  id: 1
+  key: 'rushu'
+
+network:
+  game:
+    port: 8788
+    ip: '127.0.0.1'
+  exchange:
+    port: 8787
+    ip: '127.0.0.1'
+
+database:
+  login:
+    host: 'localhost'
+    user: 'grandnainconnu'
+    password: 'ehp[a]sw'
+    name: 'hetwan'
+  game:
+    host: 'localhost'
+    user: 'grandnainconnu'
+    password: 'ehp[a]sw'
+    name: 'hetwan'

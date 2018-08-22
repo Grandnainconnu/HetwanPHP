@@ -1,0 +1,16 @@
+dofus:
+  version: '1.29.1'
+
+network:
+  login:
+    port: 444
+    ip: '127.0.0.1'
+  exchange:
+    port: 8787
+    ip: '127.0.0.1'
+
+database:
+  host: 'localhost'
+  user: 'grandnainconnu'
+  password: 'ehp[a]sw'
+  name: 'hetwan'

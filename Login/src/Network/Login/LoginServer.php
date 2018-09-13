@@ -14,10 +14,10 @@ use Hetwan\Network\Login\LoginClient;
 
 trait ClientsPoolManagerTrait
 {
-    public function getClientWithAccount($accountId) : ?\Hetwan\Network\Login\LoginClient
+    public function getClientWithAccount(int $accountId) : ?\Hetwan\Network\Login\LoginClient
     {
         foreach ($this->clientsPool as $client) {
-            if (($account = $client->getAccount()) !== null and $account->getId() == $accountId) {
+            if (($account = $client->getAccount()) and $account->getId() === $accountId) {
                 return $client;
             }
         }
@@ -41,9 +41,9 @@ final class LoginServer extends \Hetwan\Network\Base\Server
     public function onMessage(\Ratchet\ConnectionInterface $conn, $message) : void
     {
         $packets = array_filter(
-            explode("\n", 
-                str_replace(chr(0), "\n", 
-                    str_replace("\n", '', $message)
+            explode(PHP_EOL,
+                str_replace(chr(0), PHP_EOL,
+                    str_replace(PHP_EOL, '', $message)
                 )
             )
         );
@@ -64,8 +64,6 @@ final class LoginServer extends \Hetwan\Network\Base\Server
 
             $em->persist($account);
             $em->flush();
-
-            unset($em);
         }
 
         unset($this->clientsPool[$conn->resourceId]);

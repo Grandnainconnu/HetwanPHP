@@ -37,21 +37,28 @@ abstract class Client
 	/**
 	 * @var string
 	 */
-	protected $baseHandler = Handler::class;
+	protected $baseHandler;
 
 	public function __construct(\Ratchet\ConnectionInterface $conn)
 	{
 		$this->connection = $conn;
 	}
 
+	public function initialize() : void
+	{
+		;
+	}
+
 	public function handle($message) : bool
 	{
-		if (!isset($this->handler)) {
+		if (!$this->handler and $this->baseHandler) {
 			$this->setHandler($this->baseHandler);
 		}
 
 		if ($this->handler->handle($message) === false) {
 			$this->connection->close();
+
+			$this->logger->debug("Unable to handle packet {$message}, closing connection.");
 
 			return false;
 		}

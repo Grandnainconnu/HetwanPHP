@@ -40,7 +40,7 @@ final class ExchangeServer extends \Hetwan\Network\Base\Server
 
     public function onMessage(\Ratchet\ConnectionInterface $conn, $message) : void
     {
-        $packets = array_filter(explode("\n", $message));
+        $packets = array_filter(explode(PHP_EOL, $message));
 
     	foreach ($packets as $packet) {
         	$this->logger->debug("({$conn->resourceId}) Received packet: {$packet}\n");

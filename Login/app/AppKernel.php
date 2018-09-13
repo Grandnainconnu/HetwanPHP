@@ -12,6 +12,8 @@ namespace App;
 use DI\ContainerBuilder;
 use function DI\{create, get, autowire, factory};
 
+use React\EventLoop\Factory as LoopFactory;
+
 use Monolog\Logger;
 
 
@@ -47,9 +49,11 @@ class AppKernel
 	private function buildDependencies()
 	{
 		$this->containerBuilder->addDefinitions([
+			\React\EventLoop\LoopInterface::class => factory([LoopFactory::class, 'create']),
 			\Hetwan\Core\Configuration::class => create()->constructor(ROOT . '/app/config/config.yml'),
-			\Hetwan\Core\EntityManager::class => autowire(),
-			\Hetwan\Core\LoaderManager::class => autowire(),
+			'\Hetwan\Core\*' => autowire(),
+			'\Hetwan\Loader\*' => autowire(),
+			'\Hetwan\Helper\*' => autowire(),
 			\Hetwan\Network\Exchange\ExchangeServer::class => autowire(),
 			\Hetwan\Network\Login\LoginServer::class => autowire(),
 			\Monolog\Logger::class => factory(function () {

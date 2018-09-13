@@ -10,7 +10,6 @@
 namespace Hetwan\Network\Login\Handler;
 
 use Hetwan\Entity\Account;
-use Hetwan\Loader\ServerLoader;
 use Hetwan\Network\Login\Protocol\Enum\ServerState;
 use Hetwan\Network\Login\Protocol\Enum\ServerPopulation;
 use Hetwan\Network\Login\Protocol\Formatter\LoginMessageFormatter;
@@ -18,6 +17,12 @@ use Hetwan\Network\Login\Protocol\Formatter\LoginMessageFormatter;
 
 final class GameServerChoiceHandler extends \Hetwan\Network\Login\Handler\Base\Handler
 {
+	/**
+	 * @Inject
+	 * @var \Hetwan\Loader\Server
+	 */
+	private $serverLoader;
+
 	/**
 	 * @Inject
 	 * @var \Hetwan\Network\Exchange\ExchangeServer
@@ -65,7 +70,7 @@ final class GameServerChoiceHandler extends \Hetwan\Network\Login\Handler\Base\H
 	public function refreshServersList() : void
 	{
 		$this->send(LoginMessageFormatter::serversListMessage(
-			$this->loaderManager->get(ServerLoader::class)->getValues()
+			$this->serverLoader->getValues()
 		));
 	}
 
@@ -90,7 +95,7 @@ final class GameServerChoiceHandler extends \Hetwan\Network\Login\Handler\Base\H
 
 	private function sendAccessServerResponse(int $id) : void
 	{
-		if (($server = $this->loaderManager->get(ServerLoader::class)->getBy(['id' => $id], $assertCount = false, $first = true)) === null or 
+		if (($server = $this->serverLoader->getBy(['id' => $id], $assertCount = false, $first = true)) === null or 
 			$server->getState() !== ServerState::ONLINE) {
 			$this->send(LoginMessageFormatter::serverInaccessible());
 		} elseif ($server->getRequireSubscription() === true and !$this->getAccount()->getSubscriptionTimeLeft()) {

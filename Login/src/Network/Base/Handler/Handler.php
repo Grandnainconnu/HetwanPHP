@@ -26,12 +26,6 @@ abstract class Handler implements \Hetwan\Network\Base\Handler\HandlerInterface
 
 	/**
 	 * @Inject
-	 * @var \Hetwan\Core\LoaderManager
-	 */
-	protected $loaderManager;
-
-	/**
-	 * @Inject
 	 * @var \Monolog\Logger
 	 */
 	protected $logger;

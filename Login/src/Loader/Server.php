@@ -9,10 +9,13 @@
 
 namespace Hetwan\Loader;
 
-use Hetwan\Entity\Server;
+use Hetwan\Entity\Server as ServerEntity;
 
 
-final class ServerLoader extends \Hetwan\Loader\Base\Loader
+final class Server extends \Hetwan\Loader\Base\Loader
 {
-	protected $entity = Server::class;
+	/**
+	 * @var string
+	 */
+	protected $entity = ServerEntity::class;
 }

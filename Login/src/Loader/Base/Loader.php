@@ -13,8 +13,7 @@ namespace Hetwan\Loader\Base;
 abstract class Loader
 {
 	/**
-	 * @Inject
-	 * @var \Hetwan\Core\EntityManager
+	 * @var \Hetwan\Core\EntityManager 
 	 */
 	protected $entityManager;
 
@@ -38,6 +37,13 @@ abstract class Loader
 	 */
 	protected $values = [];
 
+	public function __construct(\Hetwan\Core\EntityManager $em)
+	{
+		$this->entityManager = $em;
+
+		$this->initialize();
+	}
+
 	public function initialize() : void
 	{
 		if ($this->loadAll) {
@@ -48,11 +54,11 @@ abstract class Loader
 	public function loadAll() : void
 	{
 		$this->values = $this->entityManager->get($this->emName)
-										  ->getRepository($this->entity)
-										  ->findAll();
+										  	->getRepository($this->entity)
+										  	->findAll();
 	}
 
-	public function getBy(array $filters, $assertCount = false, $first = false)
+	public function &getBy(array $filters, $assertCount = false, $first = false)
 	{
 		$toReturn = [];
 
@@ -83,7 +89,7 @@ abstract class Loader
 		return (($first and !count($toReturn)) ? null : (($first) ? $toReturn[0] : $toReturn));
 	}
 
-	public function getValues() : array
+	public function &getValues() : array
 	{
 		return $this->values;
 	}

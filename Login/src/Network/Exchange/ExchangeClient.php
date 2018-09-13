@@ -21,20 +21,21 @@ final class ExchangeClient extends \Hetwan\Network\Base\Client
 	 * @var \Hetwan\Network\Login\LoginServer
 	 */
 	private $loginServer;
+
+	/**
+	 * @var string
+	 */
+	protected $baseHandler = AuthentificationHandler::class;
 	
 	/**
 	 * @var \Hetwan\Entity\Server
 	 */
 	private $server;
 
-	public function initialize() : void
-	{
-		$this->setHandler(AuthentificationHandler::class);
-	}
-
 	public function send($packet) : void
 	{
 		$this->logger->debug("({$this->connection->resourceId}) Sending packet: {$packet}\n");
+
 		$this->connection->send($packet . "\n");
 	}
 

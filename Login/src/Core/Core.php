@@ -9,8 +9,6 @@
 
 namespace Hetwan\Core;
 
-use React\EventLoop\Factory as LoopFactory;
-
 use Ratchet\Server\IoServer;
 
 use Hetwan\Loader\ServerLoader;
@@ -38,12 +36,6 @@ final class Core
 
 	/**
 	 * @Inject
-	 * @var \Hetwan\Core\LoaderManager
-	 */
-	private $loaderManager;
-
-	/**
-	 * @Inject
 	 * @var \Hetwan\Network\Exchange\ExchangeServer
 	 */
 	private $exchangeServer;
@@ -61,20 +53,16 @@ final class Core
 	private $logger;
 
 	/**
-	 * @var \React\EventLoop\Factory
+	 * @Inject
+	 * @var \React\EventLoop\LoopInterface
 	 */
 	private $loop;
-
-	public function __construct()
-	{
-		$this->loop = LoopFactory::create();
-	}
 
 	public function initialize() : void
 	{
 		$this->initalizeEntityManager();
-		$this->initializeLoaders();
 		$this->initializeServers();
+		$this->initializeLoopSignals();
 
 		$this->logger->debug('Core initialized');
 	}
@@ -84,6 +72,16 @@ final class Core
 		$this->loop->run();
 	}
 
+	public function quit() : void
+	{
+		$this->exchangeServer->onQuit();
+		$this->loginServer->onQuit();
+
+		$this->loop->stop();
+
+		$this->logger->debug('Loop stopped');
+	}
+
 	private function initalizeEntityManager() : void
 	{
 		$this->logger->debug('Initializing entity manager...');
@@ -91,19 +89,6 @@ final class Core
 		$this->entityManager->create(ROOT . '/Entity/');
 
 		$this->logger->debug('Entity manager initialized');
-	}
-
-	private function initializeLoaders() : void
-	{
-		$loaders = [
-			ServerLoader::class
-		];
-
-		foreach ($loaders as $loader) {
-			$this->loaderManager->initialize($loader);
-		}
-
-		unset($loaders);
 	}
 
 	private function initializeServers() : void
@@ -133,11 +118,10 @@ final class Core
 		$this->logger->debug('Login server initialized');
 	}
 
-	public function quit() : void
+	private function initializeLoopSignals() : void
 	{
-		$this->exchangeServer->onQuit();
-		$this->loginServer->onQuit();
-
-		$this->loop->stop();
+		$this->loop->addSignal(SIGINT, function (int $signal) {
+			$this->quit();
+		});
 	}
 }

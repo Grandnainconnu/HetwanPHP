@@ -9,21 +9,21 @@
 
 namespace Hetwan\Network\Exchange\Handler;
 
-use Hetwan\Loader\ServerLoader;
 use Hetwan\Network\Exchange\Protocol\Formatter\ExchangeMessageFormatter;
 
 
 final class AuthentificationHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function initialize() : void
-	{
-		$this->send(ExchangeMessageFormatter::helloConnectMessage());
-	}
+	/**
+	 * @Inject
+	 * @var \Hetwan\Loader\Server
+	 */
+	private $serverLoader;
 
 	public function handle(string $authMessage) : bool
 	{
 		if (!preg_match('/^(\d+)\|(.*?)\|(.*?):(\d+)/', substr($authMessage, 2), $matches) or 
-			($server = $this->loaderManager->get(ServerLoader::class)->getBy(['id' => $matches[1]], $assertCount = false, $first = true)) === null or
+			($server = $this->serverLoader->getBy(['id' => $matches[1]], $assertCount = false, $first = true)) === null or
 			$server->getKey() !== $matches[2]) {
 			$this->send(ExchangeMessageFormatter::authentificationFailedMessage());
 

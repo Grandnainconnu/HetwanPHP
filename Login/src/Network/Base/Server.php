@@ -32,6 +32,8 @@ abstract class Server implements \Ratchet\MessageComponentInterface
     {
         $conn->close();
 
+        unset($this->clientsPool[$conn->resourceId]);
+
     	$this->logger->debug("({$conn->resourceId}) Error: {$e}\n");
     }
 

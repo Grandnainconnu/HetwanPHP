@@ -29,12 +29,13 @@ final class LoginClient extends \Hetwan\Network\Base\Client
 	public function initialize() : void
 	{
 		$this->key = Hash::generateKey(32);
+	
 		$this->setHandler(VersionHandler::class);
 	}
 
 	public function send($packet) : void
 	{
-		$packet = $packet . chr(0);
+		$packet .= chr(0);
 
 		$this->logger->debug("({$this->connection->resourceId}) Sending packet: {$packet}\n");
 		$this->connection->send($packet);

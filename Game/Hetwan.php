@@ -9,36 +9,37 @@
 
 ini_set('memory_limit', '-1');
 
-define('DEBUG', false);
+/**
+ * Declare constants values
+ */
+const DEBUG = false;
+const ROOT = __DIR__;
+
+use Hetwan\Core\Core;
 
 require __DIR__.'/vendor/autoload.php';
 
 
-class Hetwan extends \App\AppKernel
+final class Hetwan extends \App\AppKernel
 {
+	/**
+	 * @var \Hetwan\Core\Core
+	 */
 	private $core;
 
 	public function __construct()
 	{
 		parent::__construct();
 
-		$this->core = new \Hetwan\Core\Core();
+		$this->core = $this->container->make(Core::class);
 	}
 
-	public function run()
+	public function run() : void
 	{
-		$this->core->makeExchangeClient();
-		$this->core->makeGameServer();
-
+		$this->core->initialize();
 		$this->core->run();
-	}
-
-	public function getCore()
-	{
-		return $this->core;
 	}
 }
 
-$hetwan = new Hetwan;
-
-$hetwan->run();
+$runner = new Hetwan;
+$runner->run();

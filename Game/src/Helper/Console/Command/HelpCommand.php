@@ -9,11 +9,17 @@
 
 namespace Hetwan\Helper\Console\Command;
 
-use Hetwan\Helper\Console\ConsoleHelper;
+use Hetwan\Helper\Console\Command\Base\CommandArgument;
 
 
-class HelpCommand extends AbstractCommand
+final class HelpCommand extends \Hetwan\Helper\Console\Command\Base\Command
 {
+	/**
+	 * @Inject
+	 * @var \Hetwan\Helper\Console\ConsoleHelper
+	 */
+	private $consoleHelper;
+
 	public function __construct()
 	{
 		$this->name = 'help';
@@ -23,34 +29,36 @@ class HelpCommand extends AbstractCommand
 		];
 	}
 
-	public function execute($arguments, $_)
+	public function execute(array $arguments, int $playerId)
 	{
-		$commandDescription = function ($command) {
-			return sprintf('- %s: %s', $command->getName(), $command->getDescription());
-		};
-
-		$commandArguments = function ($arguments, $onlyNames = true) {
-			$commandArgumentsRepr = [];
-
-			foreach ($arguments as $argument)
-				if ($onlyNames)
-					$commandArgumentsRepr[] = !$argument->isRequired() ? sprintf('[%s]', $argument->getName()) : $argument->getName();
-				else
-					$commandArgumentsRepr[] = sprintf('- %s (%s)', $argument->getName(), $argument->getDescription());
-
-			return implode($onlyNames ? " " : "\n", $commandArgumentsRepr);
-		};
-
-		if (isset($arguments[0]) && ($command = ConsoleHelper::getCommand($arguments[0])))
-			return $this->standardMessage(sprintf("Usage: %s %s\n%s", $command->getName(), $commandArguments($command->getArguments()), $commandArguments($command->getArguments(), false)));
-		else
-		{
+		if (isset($arguments[0]) and ($command = $this->consoleHelper->getCommand($arguments[0]))) {
+			return $this->standardMessage('Usage: ' . $command->getName() . ' ' . self::getFormattedCommandArguments($command->getArguments()) . PHP_EOL . self::getFormattedCommandArguments($command->getArguments(), false));
+		} else {
 			$commandsRepr = [];
-			
-			foreach (ConsoleHelper::getCommands() as $command)
-				$commandsRepr[] = $commandDescription($command);
+			$commands = $this->consoleHelper->getCommands();
 
-			return $this->standardMessage("Help:\n" . implode("\n", $commandsRepr));
+			foreach ($commands as $command) {
+				$commandsRepr[] = '- ' . $command->getName() . ': ' . $command->getDescription();
+			}
+
+			unset($commands);
+
+			return $this->standardMessage('Help:' . PHP_EOL . implode(PHP_EOL, $commandsRepr));
 		}
+	}
+
+	private static function getFormattedCommandArguments(array $arguments, bool $onlyNames = true) : string
+	{
+		$commandArgumentsRepr = [];
+
+		foreach ($arguments as $argument) {
+			if ($onlyNames) {
+				$commandArgumentsRepr[] = (!$argument->isRequired()) ? '[' . $argument->getName() . ']' : $argument->getName();
+			} else {
+				$commandArgumentsRepr[] = '- ' . $argument->getName() . ' (' . $argument->getDescription() . ')';
+			}
+		}
+
+		return implode($onlyNames ? ' ' : PHP_EOL, $commandArgumentsRepr);
 	}
 }

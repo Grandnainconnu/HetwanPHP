@@ -1,32 +1,36 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-16 12:22:25
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-10-31 22:48:47
- */
-
 namespace Hetwan\Network\Game\Protocol\Formatter;
+
+use Hetwan\Helper\ItemHelper;
+use Hetwan\Helper\Player\PlayerHelper;
+use Hetwan\Network\Game\Protocol\Enum\ItemPositionEnum;
 
 
 class PlayerMessageFormatter
 {
-	public static function playersListMessage($account, $serverId)
+	public static function playersListMessage(\Hetwan\Entity\Login\AccountEntity $account, iterable $players, int $serverId)
 	{
-		$playerInformationsMessage = function($player)
-		{
-			return "|{$player->getId()};{$player->getName()};{$player->getLevel()};{$player->getSkinId()};{$player->getConvertedColors()};" . \Hetwan\Helper\Player\PlayerHelper::getPlayerAccessories($player) . ";{$player->getIsMerchant()};{$player->getServerId()};{$player->getIsDead()};{$player->getDeathCount()};";
-		};
+		$packet = 'ALK' . $account->getSubscriptionTimeLeft() . '|' . count($players);
 
-		$packet = 'ALK' . $account->getSubscriptionTimeLeft() . '|' . count($account->getPlayers());
-
-		if (!count($account->getPlayers()))
+		if (!count($players)) {
 			$packet .= '|';
-		else
-			foreach ($account->getPlayers() as $player)
-				if ($player->getServerId() == $serverId)
-					$packet .= $playerInformationsMessage($player);
+		} else {
+			foreach ($players as $player) {
+                $packet .= '|' . implode(';', [
+                    $player->getId(),
+                    $player->getName(),
+                    $player->getLevel(),
+                    $player->getSkinId(),
+                    PlayerHelper::getConvertedColors($player->getColors()),
+                    ItemHelper::formatAccessories(ItemHelper::getWithPositions(ItemPositionEnum::ACCESSORY, $player->getItems())),
+                    $player->getIsMerchant(),
+                    $serverId,
+                    $player->getIsDead(),
+                    $player->getDeathCount()
+                ]);
+			}
+		}
 
 		return $packet;
 	}

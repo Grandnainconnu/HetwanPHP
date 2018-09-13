@@ -9,44 +9,53 @@
 
 namespace Hetwan\Network\Exchange\Handler;
 
-use Hetwan\Network\Handler\HandlerInterface;
-use Hetwan\Network\Handler\AbstractHandler;
-
-use Hetwan\Network\Exchange\Protocol\Formatter\ExchangeMessageFormatter;
+use Hetwan\Network\Exchange\Protocol\Enum\ServerState;
 
 
-final class ConnectionHandler extends AbstractHandler
+final class ConnectionHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function initialize()
+	/**
+	 * @Inject
+	 * @var \Hetwan\Helper\AccountHelper
+	 */
+	private $accountHelper;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Network\Game\GameServer
+     */
+    private $gameServer;
+
+	public function initialize() : void
 	{
-		$this->getClient()->setServerState(1);
+		$this->client->setServerState(ServerState::ONLINE);
 	}
 
-	public function handle($data)
+	public function handle(string $data) : bool
 	{
-		switch (substr($data, 0, 1))
-		{
+		switch ($data[0]) {
 			case 'A': // Force disconnect account
-				if (substr($data, 0, 2) != 'Ad')
-					return;
+				if (substr($data, 0, 2) !== 'Ad') {
+					return false;
+				}
 
 				$accountId = substr($data, 2);
+				$client = $this->accountHelper->getClientWithId($accountId);
 
-				$client = \Hetwan\Network\Game\GameServer::getClientWithAccount($accountId);
-
-				if (null != $client)
-				{
-					\Hetwan\Network\Game\GameServer::removeClient($client->getConnection());
+				if ($client !== null) {
+					$this->gameServer->removeClient($client->getConnection());
 					$client->getConnection()->close();
 				}
 
 				break;
 			case 'T': // Account ticket
-				$splittedTicket = explode('|', substr($data, 1));
+				list($ticketId, $ipAddress, $accountId) = explode('|', substr($data, 1));
 
-				$this->getClient()->addTicket($splittedTicket[0], $splittedTicket[1], $splittedTicket[2]);
+				$this->client->addTicket($ticketId, $ipAddress, $accountId);
 
 				break;
 		}
+
+		return true;
 	}
 }

@@ -1,30 +1,31 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-07 13:03:54
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-23 15:06:28
- */
-
 namespace Hetwan\Network\Game\Handler;
 
-use Hetwan\Network\Handler\HandlerInterface;
+use Hetwan\Entity\Game\PlayerEntity;
+use Hetwan\Helper\Player\Breed\BreedHelper;
+use Hetwan\Helper\Player\PlayerHelper;
+use Hetwan\Network\Game\Base\Handler\HandlerTrait;
+use Hetwan\Network\Game\Protocol\Formatter\{
+    GameMessageFormatter,
+    ApproachMessageFormatter,
+    PlayerMessageFormatter
+};
 
-use Hetwan\Network\Exchange\ExchangeClient;
 
-use Hetwan\Network\Game\Protocol\Formatter\GameMessageFormatter;
-use Hetwan\Network\Game\Protocol\Formatter\ApproachMessageFormatter;
-use Hetwan\Network\Game\Protocol\Formatter\PlayerMessageFormatter;
-use Hetwan\Network\Game\Protocol\Formatter\FactionMessageFormatter;
-
-
-class PlayerSelectionHandler extends AbstractGameHandler
+class PlayerSelectionHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function handle($data)
+	use HandlerTrait;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\AccountHelper
+     */
+    private $accountHelper;
+
+	public function handle(string $data) : bool
 	{
-		switch (substr($data, 1, 1))
-		{
+		switch ($data[1]) {
 			case 'A':
 				$this->createPlayer($data);
 
@@ -45,6 +46,10 @@ class PlayerSelectionHandler extends AbstractGameHandler
 				$this->playersList();
 
 				break;
+            case 'M':
+                $this->playerMigration($data);
+
+                break;
 			case 'P':
 				$this->generatePlayerName();
 
@@ -58,97 +63,161 @@ class PlayerSelectionHandler extends AbstractGameHandler
 
 				break;
 		}
+
+		return true;
 	}
 
-	private function createPlayer($data)
+	private function createPlayer(string $data) : void
 	{
-		$packet = explode('|', substr($data, 2));
+	    list($name, $breed, $gender, $colorOne, $colorTwo, $colorThree) = explode('|', substr($data, 2));
 
-		if ($this->getAccount()->getPlayers()->count() >= $this->getAccount()->getMaxPlayers())
-			$this->send(PlayerMessageFormatter::maxPlayersReachedMessage());
-		elseif (!(strlen($packet[0]) >= 2 && strlen($packet[0]) <= 20) || !preg_match('/^[a-zA-Z-]/', $packet[0]))
-			$this->send(PlayerMessageFormatter::invalidPlayerNameMessage());
-		elseif ($this->getLoginEntityManager()->getRepository('\Hetwan\Entity\Login\Player')->countByNameCaseInsensitive($packet[0]) > 0)
-			$this->send(PlayerMessageFormatter::playerNameAlreadyTakenMessage());
-		else
-		{
-			$player = \Hetwan\Helper\Player\PlayerHelper::createPlayer(
-				$packet[0],
-				$packet[1], 
-				$packet[2], 
-				[$packet[3], $packet[4], $packet[5]],
-				$this->getContainer()->get('configuration')->get('server.id')
-			);
+		if ($this->getAccount()->getPlayers() !== null and array_sum($this->getAccount()->getPlayers()) >= $this->getAccount()->getMaxPlayers()) {
+            $this->send(PlayerMessageFormatter::maxPlayersReachedMessage());
+        } elseif (!(strlen($name) >= 2 and strlen($name) <= 20) or !preg_match('/^[a-zA-Z-]/', $name)) {
+            $this->send(PlayerMessageFormatter::invalidPlayerNameMessage());
+        } elseif ($this->entityManager->get()->getRepository(PlayerEntity::class)->countByNameCaseInsensitive($name) > 0) {
+            $this->send(PlayerMessageFormatter::playerNameAlreadyTakenMessage());
+        } else {
+            $breedData = BreedHelper::getFromId($breed);
 
-			$player->setAccount($this->getAccount())
-				   ->save();
+            $player = new PlayerEntity;
+            $player->setAccountId($this->getAccount()->getId())
+                   ->setName($name)
+                   ->setBreed($breed)
+                   ->setGender($gender)
+                   ->setColors($colorOne . ';' . $colorTwo . ';' . $colorThree)
+                   ->setLifePoints($breedData['startLifePoints'])
+                   ->setMaximumLifePoints($player->getLifePoints())
+                   ->setActionPoints($breedData['startActionPoints'])
+                   ->setMovementPoints($breedData['startMovementPoints'])
+                   ->setLevel(1)
+                   ->setExperience(0)
+                   ->setSkinId($breed . $gender)
+                   ->setFaction(0)
+                   ->setFactionHonorPoints(-1)
+                   ->setFactionDishonorPoints(-1)
+                   ->setMapId($breedData['startMapId'])
+                   ->setCellId($breedData['startCellId']);
 
-			$this->getAccount()->addPlayer(
-				$player
-			)->save();
+            // Insert player
+
+            $this->entityManager->get()
+                                ->persist($player);
+
+            $this->entityManager->get()
+                                ->flush();
+
+            // Append to the current account the player
+
+            $players = $this->getAccount()->getPlayers();
+            $accountPlayersOnServer = isset($players[($serverId = $this->configuration->get('server.id'))]);
+
+            if ($accountPlayersOnServer) {
+                $players[$serverId][] = $player->getId();
+            } else {
+                $players[$serverId] = [$player->getId()];
+            }
+
+			$this->getAccount()->setPlayers($players);
+
+            unset($players);
+
+            // Update account
+
+            $this->entityManager->get('login')
+                                ->persist($this->getAccount());
+
+            $this->entityManager->get('login')
+                                ->flush();
 
 			$this->send(PlayerMessageFormatter::playerCreatedMessage());
-			$this->playersList();
+
+			$this->playersList(); // Refreshing players list
 		}
 	}
 
-	private function deletePlayer($data)
+	private function deletePlayer(string $data) : void
 	{
-		$packet = explode('|', substr($data, 2));
+		list($playerId, $secretAnswer) = explode('|', substr($data, 2));
 
-		if ((!$packet[1] || $packet[1] == $this->getAccount()->getSecretAnswer()) && null != ($player = \Hetwan\Helper\AccountHelper::hasPlayer($this->getAccount()->getPlayers(), $packet[0], true)))
-		{
-			$player->remove();
+		if ((!$secretAnswer or $secretAnswer === $this->getAccount()->getSecretAnswer()) and
+            ($player = $this->accountHelper->hasPlayer($playerId, $this->getAccount()->getPlayers(), true))
+        ) {
+		    // Remove account player
+
+		    $players = $this->getAccount()->getPlayers();
+
+		    unset($players[array_search($player->getId(), $players)]);
+
+            $this->getAccount()->setPlayers($players);
+
+            $this->entityManager->persist($this->getAccount(), 'login');
+
+            // Remove player
+
+			$this->entityManager->remove($player);
 
 			$this->playersList();
-		}
-		else
-			$this->send(PlayerMessageFormatter::playerDeletetionFailureMessage());
+		} else {
+            $this->send(PlayerMessageFormatter::playerDeletetionFailureMessage());
+        }
 	}
 
-	private function doQueue() // TODO: make queue system
+	private function doQueue() : void // TODO: make queue system
 	{
 		$this->send(GameMessageFormatter::queueMessage(1, 0, 0, 1));
 	}
 
-	private function assignKey($data)
+	private function assignKey(string $data) : void
 	{
-		$this->getClient()->setKey(substr($data, 2));
+		$this->client->setKey(substr($data, 2));
 	}
 
-	private function generatePlayerName()
+	private function playerMigration(string $data) : void
+    {
+        list($playerId, $newPlayerName) = explode(';', substr($data, 2));
+
+        $this->send(PlayerMessageFormatter::playersListMessage(
+            $this->getAccount(),
+            $this->accountHelper->getPlayers($this->getAccount()->getId()),
+            $this->configuration->get('server.id')
+        ));
+    }
+
+	private function generatePlayerName() : void
 	{
-		$this->send(PlayerMessageFormatter::generatedPlayerNameMessage(
-			\Hetwan\Helper\Player\PlayerHelper::generatePlayerName()
-		));
+		$this->send(PlayerMessageFormatter::generatedPlayerNameMessage(PlayerHelper::generateRandomName()));
 	}
 
-	private function playersList()
+	private function playersList() : void
 	{
 		$this->send(PlayerMessageFormatter::playersListMessage(
-			$this->getAccount(), 
-			$this->getContainer()->get('configuration')->get('server.id')
+            $this->getAccount(),
+            $this->accountHelper->getPlayers($this->getAccount()->getId()),
+			$this->configuration->get('server.id')
 		));
 	}
 
-	private function playerSelection($data)
+	private function playerSelection(string $data) : void
 	{
 		$playerId = substr($data, 2);
-		$player = \Hetwan\Helper\AccountHelper::hasPlayer($this->getAccount()->getPlayers(), $playerId, $returnEntity = true);
 
-		if (null !== $player)
-		{
-			$this->getClient()->setPlayer($player->refresh());
+		if ($playerId === 'NaN') {
+		    return;
+        }
+
+		$player = $this->accountHelper->hasPlayer($playerId, $this->getAccount()->getPlayers(), true);
+
+		if ($player !== null) {
+			$this->client->setPlayer($player);
 
 			$this->send(ApproachMessageFormatter::playerSelectionMessage($player));
 
-			$this->getClient()->setHandler('\Hetwan\Network\Game\Handler\GameHandlerContainer');
-
-			return HandlerInterface::COMPLETED;
+			$this->client->setHandler(GameHandlerContainer::class);
 		}
 	}
 
-	private function regionalVersion()
+	private function regionalVersion() : void
 	{
 		$this->send(ApproachMessageFormatter::regionalVersionResponseMessage($this->getAccount()->getCommunity()));
 	}

@@ -9,122 +9,62 @@
 
 namespace Hetwan\Network\Game;
 
-use Ratchet\MessageComponentInterface;
-use Ratchet\ConnectionInterface;
 
-use App\AppKernel;
-
-
-class GameServer implements MessageComponentInterface 
+trait ClientsPoolManagerTrait
 {
-    /**
-     * @var array
-     */
-    protected static $clientsPool = [];
-
-    public function __construct()
+    public function removeClient(\Ratchet\ConnectionInterface $conn) : void
     {
-        AppKernel::getContainer()->get('logger')->debug("Game server started !\n");
+        if (($client = $this->clientsPool[$conn->resourceId])->getAccount() !== null) {
+            $client->getAccount()->setIsOnline(false);
+
+            $this->entityManager->persist($client->getAccount(), 'login');
+
+            if (($player = $client->getPlayer()) !== null) {
+                $client->getHandler()->onClose();
+            }
+        }
+
+        unset($this->clientsPool[$conn->resourceId]);
+
+        $this->logger->debug("({$conn->resourceId}) Client removed\n");
+    }
+}
+
+final class GameServer extends \Hetwan\Network\Base\Server 
+{
+    use ClientsPoolManagerTrait;
+
+    public function onOpen(\Ratchet\ConnectionInterface $conn) : void
+    {
+        $this->logger->debug("({$conn->resourceId}) Client connected\n");
+
+        $this->clientsPool[$conn->resourceId] = $this->container->make(GameClient::class, ['conn' => $conn]);
+        $this->clientsPool[$conn->resourceId]->initialize();
     }
 
-    public function onOpen(ConnectionInterface $conn)
-    {
-        AppKernel::getContainer()->get('logger')->debug("({$conn->resourceId}) Client connected\n");
-
-        self::$clientsPool[$conn->resourceId] = AppKernel::getContainer()->make('Hetwan\Network\Game\GameClient', ['conn' => $conn]);
-    }
-
-    public function onMessage(ConnectionInterface $conn, $message) 
+    public function onMessage(\Ratchet\ConnectionInterface $conn, $message) : void
     {
         $packets = array_filter(
-            explode("\n", 
-                str_replace(chr(0), "\n",
-                    str_replace("\n", '', $message)
+            explode(PHP_EOL,
+                str_replace(chr(0), PHP_EOL,
+                    str_replace(PHP_EOL, '', $message)
                 )
             )
         );
 
-        foreach ($packets as $packet)
-        {
-            AppKernel::getContainer()->get('logger')->debug("({$conn->resourceId}) Received packet: {$packet}\n");
+        foreach ($packets as $packet) {
+            $this->logger->debug("({$conn->resourceId}) Received packet: {$packet}\n");
 
-            if (self::$clientsPool[$conn->resourceId]->handle($packet) == false)
+            if ($this->clientsPool[$conn->resourceId]->handle($packet) === false) {
                 break;
+            }
         }
     }
 
-    public function onClose(ConnectionInterface $conn) 
+    public function onClose(\Ratchet\ConnectionInterface $conn) : void
     {
-        self::removeClient($conn);
+        $this->removeClient($conn);
 
-        AppKernel::getContainer()->get('logger')->debug("({$conn->resourceId}) Client disconnected\n");
-    }
-
-    public function onError(ConnectionInterface $conn, \Exception $e) 
-    {
-    	$conn->close();
-
-        AppKernel::getContainer()->get('logger')->debug("({$conn->resourceId}) Error: {$e}\n");
-    }
-
-    public static function removeClient(ConnectionInterface $conn)
-    {
-        if (null != ($account = ($client = self::$clientsPool[$conn->resourceId])->getAccount()))
-        {
-            $account
-                ->setIsOnline(false)
-                ->save();
-
-            $client->getHandler()->onClose();
-        }
-
-        unset(self::$clientsPool[$conn->resourceId]);
-
-        AppKernel::getContainer()->get('logger')->debug("({$conn->resourceId}) Client removed\n");
-    }
-
-    public static function getClientsPool()
-    {
-        return self::$clientsPool;
-    }
-
-    public static function getClientWithAccount($accountId)
-    {
-        foreach (self::$clientsPool as $client)
-            if (null != ($account = $client->getAccount()) && $account->getId() == $accountId)
-                return $client;
-    }
-
-    public static function getClientWithPlayer($playerId)
-    {
-        foreach (self::$clientsPool as $client)
-            if (($player = $client->getPlayer()) != null && $player->getId() == $playerId)
-                return $client;
-    }
-
-    public static function getClientWithPlayerName($playerName)
-    {
-        foreach (self::$clientsPool as $client)
-            if (($player = $client->getPlayer()) != null && $player->getName() == $playerName)
-                return $client;
-    }
-
-    public static function sendToAllPlayersInMap(int $mapId, $message, array $exceptId = [])
-    {
-        foreach (self::$clientsPool as $client)
-            if (($player = $client->getPlayer()) != null && $player->getMapId() == $mapId && !in_array($player->getId(), $exceptId))
-                $client->send($message);
-    }
-
-    public static function close()
-    {
-        foreach (self::$clientsPool as $client)
-        {
-            self::removeClient($client->getConnection());
-
-            $client->getConnection()->close();
-        }
-
-        AppKernel::getContainer()->get('logger')->debug("Game server shutted down.\n");
+        $this->logger->debug("({$conn->resourceId}) Client disconnected\n");
     }
 }

@@ -9,27 +9,26 @@
 
 namespace Hetwan\Network\Game;
 
-use App\AppKernel;
-
+use Hetwan\Network\Game\Handler\AuthentificationHandler;
 use Hetwan\Model\AccountModel;
 
 
-class GameClient extends \Hetwan\Network\AbstractClient
+class GameClient extends \Hetwan\Network\Base\Client
 {
-	/**
-	 * @var \Hetwan\Entity\Account
-	 */
-	protected $account;
-
-	/**
-	 * @var \Hetwan\Entity\Player
-	 */
-	protected $player;
-
 	/**
 	 * @var array
 	 */
 	protected $interactions = [];
+
+	/**
+	 * @var \Hetwan\Entity\Login\AccountEntity
+	 */
+	protected $account;
+
+	/**
+	 * @var \Hetwan\Entity\Game\PlayerEntity
+	 */
+	protected $player;
 
 	/**
 	 * Client key
@@ -38,18 +37,16 @@ class GameClient extends \Hetwan\Network\AbstractClient
 	 */
 	protected $key;
 
-	public function __construct(\Ratchet\ConnectionInterface $conn)
+	public function initialize(): void
 	{
-		parent::__construct($conn);
-
-		$this->setHandler('\Hetwan\Network\Game\Handler\AuthentificationHandler');
+		$this->setHandler(AuthentificationHandler::class);
 	}
 
-	public function send($packet)
+	public function send($packet) : void
 	{
-		$packet = $packet . chr(0);
+		$packet .= chr(0);
 
-		AppKernel::getContainer()->get('logger')->debug("({$this->connection->resourceId}) Sending packet: {$packet}\n");
+		$this->logger->debug("({$this->connection->resourceId}) Sending packet: {$packet}\n");
 
 		$this->connection->send($packet);
 	}
@@ -73,32 +70,38 @@ class GameClient extends \Hetwan\Network\AbstractClient
 		return $interaction;
 	}
 
-	public function setAccount(\Hetwan\Entity\Login\Account $account)
+	public function setAccount(\Hetwan\Entity\Login\AccountEntity $account) : \Hetwan\Network\Game\GameClient
 	{
 		$this->account = $account;
+
+		return $this;
 	}
 
-	public function getAccount()
+	public function setPlayer(\Hetwan\Entity\Game\PlayerEntity $player) : \Hetwan\Network\Game\GameClient
+	{
+		$this->player = $player;
+
+		return $this;
+	}
+
+	public function setKey(string $key) : \Hetwan\Network\Game\GameClient
+	{
+		$this->key = $key;
+
+		return $this;
+	}
+
+	public function getAccount() : ?\Hetwan\Entity\Login\AccountEntity
 	{
 		return $this->account;
 	}
 
-	public function setPlayer(\Hetwan\Entity\Login\Player $player)
-	{
-		$this->player = $player;
-	}
-
-	public function getPlayer()
+	public function getPlayer() : ?\Hetwan\Entity\Game\PlayerEntity
 	{
 		return $this->player;
 	}
 
-	public function setKey($key)
-	{
-		$this->key = $key;
-	}
-
-	public function getKey()
+	public function getKey() : ?string
 	{
 		return $this->key;
 	}

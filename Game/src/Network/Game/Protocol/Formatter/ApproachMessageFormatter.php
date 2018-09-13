@@ -10,6 +10,9 @@
 namespace Hetwan\Network\Game\Protocol\Formatter;
 
 
+use Hetwan\Helper\ItemHelper;
+use Hetwan\Network\Game\Protocol\Enum\ItemPositionEnum;
+
 class ApproachMessageFormatter
 {
 	public static function helloGameMessage()
@@ -24,7 +27,6 @@ class ApproachMessageFormatter
 
 	public static function playerSelectionMessage($player)
 	{
-
 		$packet = [
 			'ASK',
 			$player->getId(),
@@ -37,9 +39,13 @@ class ApproachMessageFormatter
 		];
 
 		$itemsPacket = [];
+		$items = $player->getItems();
 
-		foreach (array_merge($player->getInventoryItems(), $player->getEquipedItems()) as $item)
+		foreach ($items as $item) {
 			$itemsPacket[] = ItemMessageFormatter::itemFormatter($item);
+		}
+
+		unset($items);
 
 		return implode('|', $packet) . '|' . implode(';', $itemsPacket);
 	}

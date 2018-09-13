@@ -1,34 +1,53 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-10-26 23:02:17
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-23 16:24:35
- */
-
 namespace Hetwan\Network\Game\Handler;
 
-use Hetwan\Helper\MapDataHelper;
 use Hetwan\Helper\ScriptedCellDataHelper;
-use Hetwan\Helper\Player\PlayerHelper;
 use Hetwan\Helper\Player\Interaction\MovementInteractionHelper;
-
-use Hetwan\Loader\MapDataLoader;
-
+use Hetwan\Network\Game\Base\Handler\HandlerTrait;
 use Hetwan\Network\Game\Protocol\Enum\ActionTypeEnum;
-
 use Hetwan\Network\Game\Protocol\Formatter\GameMessageFormatter;
 
 
-class GameHandler extends AbstractGameHandler
+class GameHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function handle($data)
+    /**
+     * @Inject
+     * @var \DI\Container
+     */
+    private $container;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\ExperienceDataHelper
+     */
+    private $experienceDataHelper;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\MapDataHelper
+     */
+    private $mapDataHelper;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Loader\MapDataLoader
+     */
+    private $mapDataLoader;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Loader\ScriptedCellDataLoader
+     */
+    private $scriptedCellDataLoader;
+
+	use HandlerTrait;
+
+	public function handle(string $data) : bool
 	{
-		switch (substr($data, 0, 1))
-		{
+		switch ($data[0]) {
 			case 'A':
-				$this->gameAction(ActionTypeEnum::toString((int) substr($data, 1, 4)), substr($data, 4));				
+				$this->startGameAction(ActionTypeEnum::toString((int)substr($data, 1, 4)), substr($data, 4));
 
 				break;
 			case 'C':
@@ -40,24 +59,34 @@ class GameHandler extends AbstractGameHandler
 
 				break;
 			case 'K':
-				$this->gameActionEnd(substr($data, 1, 1) == 'K', substr($data, 2));
+				$this->endGameAction(substr($data, 1, 1) == 'K', substr($data, 2));
 
 				break;
 			default:
-				echo "Unable to handle game action packet: {$data}\n";
+                $this->logger->debug('Unable to handle game packet: ' . $data . PHP_EOL);
 
 				break;
 		}
+
+		return true;
 	}
 
-	private function playerLoaded()
+    /**
+     * When the player is loaded
+     * @return void
+     */
+	private function playerLoaded() : void
 	{
 		$this->send(GameMessageFormatter::playerLoadedMessage($this->getPlayer()->getName(), true));
-		$this->send(GameMessageFormatter::playerStatisticsMessage($this->getPlayer()));
+		$this->send(GameMessageFormatter::playerStatisticsMessage(
+		    $this->getPlayer(),
+            $this->experienceDataHelper->getWithLevel($this->getPlayer()->getLevel()))
+        );
 		$this->send(GameMessageFormatter::playerRegenerationIntervalMessage(2000));
 
-		if (($mapData = MapDataLoader::getMapWithId((int) $this->getPlayer()->getMapId())) == null)
-			return;
+		if (($mapData = $this->mapDataLoader->getBy(['id' => $this->getPlayer()->getMapId()], false, true)) === null) {
+            return;
+        }
 
 		$this->send(GameMessageFormatter::mapDataMessage(
 			$mapData->getId(), 
@@ -66,59 +95,70 @@ class GameHandler extends AbstractGameHandler
 		));
 	}
 
-	private function playerSpawn()
+    /**
+     * When a player is ready to spawn
+     * @return void
+     */
+	private function playerSpawn() : void
 	{
-		MapDataHelper::addPlayerInMap((int) $this->getPlayer()->getMapId(), $this->getPlayer());
+		$this->mapDataHelper->addPlayer($this->getPlayer()->getMapId(), $this->getPlayer());
 
 		$this->send(GameMessageFormatter::mapLoadedMessage());
 		$this->send(GameMessageFormatter::mapFightCountMessage(0));
 	}
 
-	private function gameAction($actionType, $path)
-	{
-		switch (ActionTypeEnum::fromString($actionType))
-		{
+    /**
+     * Handle game action
+     * @param string $actionType
+     * @param string $path
+     */
+	private function startGameAction(string $actionType, string $path) : void
+    {
+		switch (ActionTypeEnum::fromString($actionType)) {
+            case 0:
 			case ActionTypeEnum::MOVEMENT:
-				$this->getClient()->addInteraction((new MovementInteractionHelper($this->getClient(), $path)))->begin();
+				$this->client->addInteraction(($this->container->make(MovementInteractionHelper::class, ['player' => $this->client->getPlayer(), 'path' => $path])))->begin();
 
 				break;
 		}
 	}
 
-	private function gameActionEnd($actionSucceed, $packet)
+    /**
+     * Handle game action end
+     * @param bool $actionSucceed
+     * @param string $packet
+     */
+	private function endGameAction(bool $actionSucceed, string $packet) : void
 	{
-		$interaction = $this->getClient()->removeInteraction();
+		$interaction = $this->client->removeInteraction();
 
-		switch ($interaction->getType())
-		{
+		switch ($interaction->getType()) {
 			case ActionTypeEnum::MOVEMENT:
-				if ($actionSucceed)
-				{
+				if ($actionSucceed) {
 					$interaction->end();
 
-					if (($scriptedCell = ScriptedCellDataHelper::getScriptedCell($this->getPlayer()->getMapId(), $this->getPlayer()->getCellId())) != null)
-					{
-						$nextMapInformations = ScriptedCellDataHelper::useScriptedCell($scriptedCell);
+					if (($scriptedCell = $this->scriptedCellDataLoader->getBy(['mapId' => $this->getPlayer()->getMapId(), 'cellId' => $this->getPlayer()->getCellId()], false, true)) !== null) {
+                        list($nextMapId, $nextCellId) = ScriptedCellDataHelper::use($scriptedCell);
 
-						if (($mapData = MapDataLoader::getMapWithId((int) $nextMapInformations['nextMapId'])) == null)
-							return;
+						if (($mapData = $this->mapDataLoader->getBy(['id' => $nextMapId], false, true)) === null) {
+                            return;
+                        }
 
-						PlayerHelper::teleport($this->getClient(), $mapData, $nextMapInformations['nextCellId']);
+						$this->mapDataHelper->teleportPlayer($mapData, $nextCellId, $this->client);
 					}
-				}
-				else
-				{
-					$spltdPacket = explode('|', $packet);
+				} else {
+                    list($orientation, $cellId) = explode('|', $packet);
 
-					$interaction->cancel($spltdPacket[0], $spltdPacket[1]);
+					$interaction->cancel((int)$orientation, (int)$cellId);
 				}
 
 				break;
 			default:
-				if ($actionSucceed)
-					$interaction->end();
-				else
-					$interaction->cancel();
+				if ($actionSucceed) {
+                    $interaction->end();
+                } else {
+                    $interaction->cancel();
+                }
 
 				break;
 		}

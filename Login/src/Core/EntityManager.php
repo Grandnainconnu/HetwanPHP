@@ -47,6 +47,30 @@ final class EntityManager
 
 		return $this->entityManagers[$emName];
 	}
+
+    public function refresh(object $entity, string $emName = 'default') : object
+    {
+        $this->get($emName)->refresh($entity);
+        $this->get($emName)->flush();
+
+        return $entity;
+    }
+
+    public function persist(object $entity, string $emName = 'default') : object
+    {
+        $this->get($emName)->persist($entity);
+        $this->get($emName)->flush();
+
+        return $entity;
+    }
+
+    public function remove(object $entity, string $emName = 'default') : object
+    {
+        $this->get($emName)->remove($entity);
+        $this->get($emName)->flush();
+
+        return $entity;
+    }
 }
 
 class EntityManagerException extends \Exception {}

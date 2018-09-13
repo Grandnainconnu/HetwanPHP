@@ -12,52 +12,57 @@ namespace Hetwan\Helper;
 use Hetwan\Network\Game\Protocol\Enum\ItemEffectEnum;
 
 
-class ItemEffectHelper
+final class ItemEffectHelper
 {
-	public static function generateEffectsFromString($effects, $perfectEffects)
+	public static function generateFromString(?string $effects, bool $perfectEffects) : array
 	{
-		$effects = self::getEffectsFromString($effects);
+	    if ($effects === null) {
+	        return [];
+        }
 
-		foreach ($effects as $k => $effect)
-			if (is_array($effect))
+		$effects = self::getFromString($effects);
+
+		foreach ($effects as $k => $effect) {
+			if (is_array($effect)) {
 				$effects[$k] = $perfectEffects == true ? $effect[1] : rand($effect[0], $effect[1]);
+			}
+		}
 
 		return $effects;
 	}
 
-	public static function getEffectsFromString($effects)
+	public static function getFromString(string $effects) : array
 	{
 		$parseEffects = [];
 
-		if (null != $effects)
-			foreach (explode(',', $effects) as $effect)
-			{
+		if ($effects !== null) {
+			foreach (explode(',', $effects) as $effect) {
 				$parsedEffect = explode('#', $effect);
 
 		        $effectId = hexdec($parsedEffect[0]);
-		        $minimumValue = hexdec($parsedEffect[1]);
+		        $minimumValue = isset($parsedEffect[1]) ? hexdec($parsedEffect[1]) : 0;
 		        $maximumValue = isset($parsedEffect[2]) ? hexdec($parsedEffect[2]) : 0;
 
-		        if (ItemEffectEnum::isValidValue($effectId))
-		        {
+		        if (ItemEffectEnum::isValidValue($effectId)) {
 		        	$effectName = ItemEffectEnum::toString($effectId);
 
-			        if (!$maximumValue)
-			        	$parseEffects[$effectName] = $minimumValue;
-			        else
-		    	    	$parseEffects[$effectName] = [$minimumValue, $maximumValue];
+			        if (!$maximumValue) {
+						$parseEffects[$effectName] = $minimumValue;
+					} else {
+						$parseEffects[$effectName] = [$minimumValue, $maximumValue];
+					}
 				}
 			}
+		}
 
 		return $parseEffects;
 	}
 
-	public static function toString(array $effects)
+	public static function toString(array $effects) : string
 	{
 		$stringEffects = [];
 
-		foreach ($effects as $effectId => $effect)
-		{
+		foreach ($effects as $effectId => $effect) {
 			$effectId = dechex(is_array(($id = ItemEffectEnum::fromString($effectId))) ? $id[0] : $id);
 			$effectValue = dechex($effect);
 
@@ -66,4 +71,25 @@ class ItemEffectHelper
 
 		return implode(',', $stringEffects);
 	}
+
+	public static function getFromItems(iterable $items) : array
+    {
+        $itemsBonus = [];
+
+        foreach ($items as $item) {
+            $effects = self::getFromString($item->getEffects());
+
+            foreach ($effects as $effectId => $effect) {
+                if (isset($equipedItemsBonus[$effectId])) {
+                    $itemsBonus[$effectId] += $effect;
+                } else {
+                    $itemsBonus[$effectId] = $effect;
+                }
+            }
+
+            unset($effects);
+        }
+
+        return $itemsBonus;
+    }
 }

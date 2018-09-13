@@ -1,38 +1,41 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-11-04 17:29:52
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-11-04 17:41:21
- */
-
 namespace Hetwan\Network\Game\Handler;
 
 use Hetwan\Helper\MapDataHelper;
+use Hetwan\Network\Game\Base\Handler\HandlerTrait;
 
 
-class EnvironementHandler extends AbstractGameHandler
+class EnvironementHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function handle($data)
+	use HandlerTrait;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\MapDataHelper
+     */
+    private $mapDataHelper;
+
+	public function handle(string $data) : bool
 	{
-		switch (substr($data, 0, 1))
-		{
+		switch (substr($data, 0, 1)) {
 			case 'D':
-				$this->changePlayerOrientation(substr($data, 1));
+				$this->changePlayerOrientation((int)substr($data, 1));
 
 				break;
 			default:
-				echo "Unable to handle environement packet: {$data}\n";
+                $this->logger->debug('Unable to handle environment packet: ' . $data . PHP_EOL);
 
 				break;
 		}
+
+		return true;
 	}
 
-	private function changePlayerOrientation($direction)
+	private function changePlayerOrientation(int $direction) : void
 	{
 		$this->getPlayer()->setOrientation($direction);
 
-		MapDataHelper::updatePlayerOrientationInMap((int) $this->getPlayer()->getMapId(), $this->getPlayer());
+		$this->mapDataHelper->updatePlayerOrientation($this->getPlayer()->getMapId(), $this->getPlayer());
 	}
 }

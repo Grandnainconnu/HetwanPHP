@@ -1,23 +1,16 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-10-26 23:10:11
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-31 14:07:12
- */
-
 namespace Hetwan\Network\Game\Protocol\Formatter;
+
+use Hetwan\Helper\ItemHelper;
+use Hetwan\Network\Game\Protocol\Enum\ItemPositionEnum;
 
 
 class ItemMessageFormatter
 {
 	public static function itemFormatter($item)
 	{
-		$convertedItemId = dechex($item->getId());
-		$convertedTemplateId = dechex($item->getItemData()->getId());
-
-		return "{$convertedItemId}~{$convertedTemplateId}~{$item->getQuantity()}~{$item->getPosition()}~{$item->getEffects()}";
+		return dechex($item->getId()) . '~' . dechex($item->getItemData()->getId()) . '~' . $item->getQuantity() . '~' . (($item->getPosition() < 0) ? $item->getPosition() : dechex($item->getPosition())) . '~' . $item->getEffects();
 	}
 
 	public static function inventoryStatsMessage($pods, $maxPods)
@@ -55,8 +48,8 @@ class ItemMessageFormatter
         return 'OM' . $itemId . '|' . ($position == \Hetwan\Network\Game\Protocol\Enum\ItemPositionEnum::INVENTORY ? '' : $position);
     }
 
-    public static function accessoriesMessage($player)
+    public static function accessoriesMessage(\Hetwan\Entity\Game\PlayerEntity $player) : string
     {
-    	return 'Oa' . $player->getId() . '|' . \Hetwan\Helper\Player\PlayerHelper::getPlayerAccessories($player);
+    	return 'Oa' . $player->getId() . '|' . ItemHelper::formatAccessories(ItemHelper::getWithPositions(ItemPositionEnum::ACCESSORY, $player->getItems()));
     }
 }

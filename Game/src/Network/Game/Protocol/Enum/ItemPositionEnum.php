@@ -1,12 +1,5 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-21 23:29:28
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-30 16:15:26
- */
-
 namespace Hetwan\Network\Game\Protocol\Enum;
 
 
@@ -29,21 +22,44 @@ class ItemPositionEnum extends AbstractEnum
 		  DOFUS_FIVE 	= 13,
 		  DOFUS_SIX 	= 14,
 		  SHIELD 		= 15,
-		  MOUNT 		= 16;
-		  /*
-            Bar1 = 23,
-            Bar2 = 24,
-            Bar3 = 25,
-            Bar4 = 26,
-            Bar5 = 27,
-            Bar6 = 28,
-            Bar7 = 29,
-            Bar8 = 30,
-            Bar9 = 31,
-            Bar10 = 32,
-            Bar11 = 33,
-            Bar12 = 34,
-            Bar13 = 35,
-            Bar14 = 36,
-          */
+		  MOUNT 		= 16,
+	      BAR_1         = 23,
+          BAR_2         = 24,
+          BAR_3         = 25,
+          BAR_4         = 26,
+          BAR_5         = 27,
+          BAR_6         = 28,
+          BAR_7         = 29,
+          BAR_8         = 30,
+          BAR_9         = 31,
+          BAR_10        = 32,
+          BAR_11        = 33,
+          BAR_12        = 34,
+          BAR_13        = 35,
+          BAR_14        = 36,
+
+          ACCESSORY     = [
+                            self::CAP,
+                            self::MANTLE,
+                            self::ANIMAL,
+                            self::SHIELD
+                        ],
+          EQUPMENT      = [
+                            self::AMULET,
+                            self::WEAPON,
+                            self::RING_ONE,
+                            self::BELT,
+                            self::RING_TWO,
+                            self::BOOTS,
+                            self::CAP,
+                            self::MANTLE,
+                            self::ANIMAL,
+                            self::DOFUS_ONE,
+                            self::DOFUS_TWO,
+                            self::DOFUS_THREE,
+                            self::DOFUS_FOUR,
+                            self::DOFUS_FIVE,
+                            self::DOFUS_SIX,
+                            self::SHIELD
+                        ];
 }

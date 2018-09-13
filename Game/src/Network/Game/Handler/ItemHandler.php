@@ -1,112 +1,154 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-11-03 14:01:59
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-31 15:08:52
- */
-
 namespace Hetwan\Network\Game\Handler;
 
+use Hetwan\Entity\Game\Base\Item;
 use Hetwan\Helper\ItemHelper;
-use Hetwan\Helper\MapDataHelper;
-use Hetwan\Helper\Condition\ConditionHelper;
-
-use Hetwan\Network\Game\Protocol\Formatter\ItemMessageFormatter;
-use Hetwan\Network\Game\Protocol\Formatter\GameMessageFormatter;
-
+use Hetwan\Network\Game\Base\Handler\HandlerTrait;
 use Hetwan\Network\Game\Protocol\Enum\ItemPositionEnum;
+use Hetwan\Network\Game\Protocol\Formatter\{
+    ItemMessageFormatter,
+    GameMessageFormatter
+};
 
 
-class ItemHandler extends AbstractGameHandler
+class ItemHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function handle($data)
+	use HandlerTrait;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\Condition\ConditionHelper
+     */
+    private $conditionHelper;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\ExperienceDataHelper
+     */
+    private $experienceDataHelper;
+
+    /**
+     * @Inject
+     * @var \Hetwan\Helper\MapDataHelper
+     */
+    private $mapDataHelper;
+
+	public function handle(string $data) : bool
 	{
-		switch (substr($data, 0, 1))
-		{
+		switch ($data[0]) {
 			case 'M':
 				list($itemId, $position) = explode('|', substr($data, 1));
-				
+
 				$this->moveItem($itemId, $position);
 				$this->checkEquipedItemsConditions(); // To prevent keeped items without filled conditions
 
 				break;
 			default:
-				echo "Unable to handle item packet: {$data}\n";
+			    $this->logger->debug('Unable to handle item packet: ' . $data . PHP_EOL);
 
 				break;
 		}
+
+		return true;
 	}
 
-	private function checkEquipedItemsConditions()
+	private function checkEquipedItemsConditions() : void
 	{
-		foreach ($this->getPlayer()->getEquipedItems() as $item)
-			if (!ConditionHelper::playerFillItemConditions($item->getItemData()->getConditions(), $this->getPlayer()))
-				$this->moveItem($item->getId(), ItemPositionEnum::INVENTORY, $force = true);
+	    $equipedItems = ItemHelper::getWithPositions(ItemPositionEnum::EQUPMENT, $this->getPlayer()->getItems());
+
+		foreach ($equipedItems as $item) {
+            if (!$this->conditionHelper->fill($item->getItemData()->getConditions(), $this->getPlayer())) {
+                $this->moveItem($item->getId(), ItemPositionEnum::INVENTORY, true);
+            }
+        }
 	}
 
-	private function moveItem($itemId, $position, $force = false)
+	private function moveItem(int $itemId, int $position, bool $force = false) : void
 	{
-		$playerItems = array_merge($this->getPlayer()->getInventoryItems(), $this->getPlayer()->getEquipedItems());
+	    $previousEquipedItems = ItemHelper::getWithPositions(ItemPositionEnum::EQUPMENT, $this->getPlayer()->getItems());
 
-		if (($item = ItemHelper::getPlayerItem($playerItems, $itemId)) == null || $item->getQuantity() < 1 || $item->getPosition() == $position || !ItemHelper::validMovementWithItem($this->getPlayer(), $item, $position))
-			return;
-		elseif ($this->getPlayer()->getLevel() < $item->getItemData()->getLevel())
-			$this->send(ItemMessageFormatter::itemLevelTooHighMessage());
-		elseif (!ConditionHelper::playerFillItemConditions($item->getItemData()->getConditions(), $this->getPlayer()) && !$force)
-			$this->send(ItemMessageFormatter::itemConditionsNotFilledMessage());
-		else
-		{
-			if ($position == ItemPositionEnum::INVENTORY && ($sameItem = ItemHelper::getPlayerSameItem($playerItems, $item)))
-			{
-				// Append one item to the quantity
-				$sameItem->setQuantity($sameItem->getQuantity() + 1);
+		if (($item = ItemHelper::get($itemId, $this->getPlayer()->getItems())) === null or
+            $item->getQuantity() < 1 or
+            $item->getPosition() === $position or
+            !ItemHelper::validMove($item, $position, $previousEquipedItems)
+        ) {
+            return;
+        } elseif ($this->getPlayer()->getLevel() < $item->getItemData()->getLevel()) {
+            $this->send(ItemMessageFormatter::itemLevelTooHighMessage());
+        } elseif (!$this->conditionHelper->fill($item->getItemData()->getConditions(), $this->getPlayer()) and !$force) {
+            $this->send(ItemMessageFormatter::itemConditionsNotFilledMessage());
+        } else {
+			if ($position === ItemPositionEnum::INVENTORY and ($sameItem = ItemHelper::getSame($item, $this->getPlayer()->getItems()))) {
+				$this->duplicateItem($item, $sameItem);
+			} else {
+			    if (!empty(($itemAlreadyHere = ItemHelper::getWithPosition($position, $this->getPlayer()->getItems())))) {
+			        if (!ItemHelper::equals($item, $itemAlreadyHere[0])) {
+                        $this->moveItem($itemAlreadyHere[0]->getId(), ItemPositionEnum::INVENTORY, false);
+                    }
+                }
 
-				$this->send(ItemMessageFormatter::deleteMessage($item->getId()));				
-				$this->send(ItemMessageFormatter::quantityMessage($sameItem->getId(), $sameItem->getQuantity()));
+				if ($item->getQuantity() > 1) {
+				    $item = $this->cloneItem($item);
+                }
 
-				$item->remove();
-				$sameItem->save();
-			}
-			else
-			{
-				if (($itemAlreadyHere = ItemHelper::getPlayerItemsWithPosition($playerItems, $position)))
-					$this->moveItem($itemAlreadyHere->getId(), ItemPositionEnum::INVENTORY);
-
-				if ($item->getQuantity() > 1)
-				{
-					$copy = $item->sliceOne();
-
-					$this->send(ItemMessageFormatter::addItemMessage($copy));
-					$this->send(ItemMessageFormatter::quantityMessage($item->getId(), $item->getQuantity()));
-
-					$item = $copy;
-				}
-
-				$item
-					->setPosition($position)
-					->save();
-
-				$this->send(ItemMessageFormatter::itemMovementMessage($item->getId(), $item->getPosition()));
+				$this->send(ItemMessageFormatter::itemMovementMessage($item->getId(), $position));
 			}
 		}
 
-		// Update inventory and equiped items
-		$this->getPlayer()->refreshInventoryItems();
-		$this->getPlayer()->refreshEquipedItems();
+        $previousPosition = $item->getPosition();
+		$item->setPosition($position);
 
-		// Update player bonus
-		$this->getPlayer()->getCharacteristics()->updateCharacteristicsBonus($this->getPlayer()->getEquipedItemsBonus());
+		$diffs = ItemHelper::getDiff($previousEquipedItems, ItemHelper::getWithPositions(ItemPositionEnum::EQUPMENT, $this->getPlayer()->getItems()));
 
-		$this->send(ItemMessageFormatter::inventoryStatsMessage(
-			$this->getPlayer()->getCharacteristics()->getCharacteristic('pods')->getCurrent(),
-			$this->getPlayer()->getCharacteristics()->getCharacteristic('pods')->getTotal()
-		));
+		// Update player characteristics
+		$this->getPlayer()->getCharacteristics()->updateCharacteristicsBonus($diffs['append']);
+        $this->getPlayer()->getCharacteristics()->updateCharacteristicsBonus($diffs['move'], true);
 
-		$this->send(GameMessageFormatter::playerStatisticsMessage($this->getPlayer()));
+        $this->send(ItemMessageFormatter::inventoryStatsMessage(
+            $this->getPlayer()->getCharacteristics()->getCharacteristic('pods')->getCurrent(),
+            $this->getPlayer()->getCharacteristics()->getCharacteristic('pods')->getTotal()
+        ));
 
-		if (in_array($position, [ItemPositionEnum::CAP, ItemPositionEnum::MANTLE, ItemPositionEnum::ANIMAL, ItemPositionEnum::SHIELD]))
-			MapDataHelper::updatePlayerAccessoriesInMap($this->getPlayer()); // Update player in map
+        $this->send(GameMessageFormatter::playerStatisticsMessage(
+            $this->getPlayer(),
+            $this->experienceDataHelper->getWithLevel($this->getPlayer()->getLevel())
+        ));
+
+        if (in_array((($position == ItemPositionEnum::INVENTORY) ? $previousPosition : $position), ItemPositionEnum::ACCESSORY)) {
+            $this->mapDataHelper->sendToAllPlayers(
+                $this->getPlayer()->getMapId(),
+                ItemMessageFormatter::accessoriesMessage($this->getPlayer())
+            );
+        }
 	}
+
+	private function cloneItem(\Hetwan\Entity\Game\ItemEntity $item) : \Hetwan\Entity\Game\ItemEntity
+    {
+        $copy = ItemHelper::sliceOne($item);
+
+        // Register in database
+
+        $this->entityManager->persist($copy);
+        $this->entityManager->get()->flush($copy);
+
+        $this->getPlayer()->addItem($copy);
+
+        $this->send(ItemMessageFormatter::addItemMessage($copy));
+        $this->send(ItemMessageFormatter::quantityMessage($item->getId(), $item->getQuantity()));
+
+        return $copy;
+    }
+
+	private function duplicateItem(\Hetwan\Entity\Game\ItemEntity $item, \Hetwan\Entity\Game\ItemEntity $same) : void
+    {
+        $same->setQuantity($same->getQuantity() + 1);
+
+        $this->getPlayer()->removeItem($item);
+
+        $this->send(ItemMessageFormatter::deleteMessage($item->getId()));
+        $this->send(ItemMessageFormatter::quantityMessage($same->getId(), $same->getQuantity()));
+
+        $this->entityManager->remove($item);
+    }
 }

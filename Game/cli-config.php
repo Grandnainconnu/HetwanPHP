@@ -1,18 +1,24 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-09-04 18:56:21
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-11-02 22:19:25
- */
-
+use Hetwan\Core\EntityManager;
 use Doctrine\ORM\Tools\Console\ConsoleRunner;
 
-$appKernel = new \App\AppKernel;
-$container = \App\AppKernel::getContainer();
 
-$em = $container->get('database')->getLoginEntityManager();
-//$em = $container->get('database')->getGameEntityManager();
+/**
+ * Declare constants values
+ */
+const DEBUG = false;
+const ROOT = __DIR__;
+
+final class CLIConfig extends \App\AppKernel
+{
+    public function getEntityManager(string $path, string $prefix = 'database', string $emName = 'default')
+	{
+		return $this->container->get(EntityManager::class)->create($path, $prefix, $emName);
+	}
+}
+
+$config = new CLIConfig;
+$em = $config->getEntityManager(ROOT . '/src/Entity/Game/', 'database.game');
 
 return ConsoleRunner::createHelperSet($em);

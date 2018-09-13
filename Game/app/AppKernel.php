@@ -3,15 +3,19 @@
 /**
  * @Author: jeanw
  * @Date:   2017-09-04 09:18:58
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-10-27 12:24:02
+ * @Last Modified by:   Jean Walrave
+ * @Last Modified time: 2018-04-12 15:08:12
  */
 
 namespace App;
 
+use DI\ContainerBuilder;
+use function DI\{create, get, autowire, factory};
+
+use Doctrine\Common\EventManager;
+use React\EventLoop\Factory as LoopFactory;
+
 use Monolog\Logger;
-use Monolog\Formatter\LineFormatter;
-use Monolog\Handler\StreamHandler;
 
 
 class AppKernel
@@ -24,56 +28,40 @@ class AppKernel
 	/**
 	 * @var \DI\Container
 	 */
-	protected static $container;
+	protected $container;
 
 	public function __construct()
 	{
 		$this->makeContainerBuilder();
 		$this->buildDependencies();
 
-		self::$container = $this->containerBuilder->build();
+		$this->container = $this->containerBuilder->build();
 	}
 
 	private function makeContainerBuilder()
 	{
-		$containerBuilder = new \DI\ContainerBuilder();
+		$containerBuilder = new ContainerBuilder();
 		$containerBuilder->useAutowiring(true);
 		$containerBuilder->useAnnotations(true);
-		
-		// $containerBuilder->setDefinitionCache(new \Doctrine\Common\Cache\ApcCache()); CACHE
 
 		$this->containerBuilder = $containerBuilder;
 	}
 
 	private function buildDependencies()
 	{
-		return $this->containerBuilder->addDefinitions([
-			'configuration' => \DI\Object('Hetwan\Core\Configuration')->constructor(self::getRootDir().'/app/config/config.yml'),
-			'database' => \DI\object('Hetwan\Core\Database')->constructorParameter('entitiesPath',  self::getRootDir().'/src/Entity/'),
-			'logger' => \DI\factory(function () {
+		$this->containerBuilder->addDefinitions([
+			\React\EventLoop\LoopInterface::class => factory([LoopFactory::class, 'create']),
+			\Hetwan\Core\Configuration::class => create()->constructor(ROOT . '/app/config/config.yml'),
+			'\Hetwan\Core\*' => autowire(),
+			'\Hetwan\Loader\*' => autowire(),
+			'\Hetwan\Helper\*' => autowire(),
+			\Hetwan\Network\Game\GameServer::class => autowire(),
+			\Hetwan\Network\Exchange\ExchangeConnection::class => autowire(),
+			\Monolog\Logger::class => factory(function () {
 		    	$logger = new Logger('HetwanPHP');
-
-		    	//$fileHandler = new StreamHandler($this->getLogDir().'/'.date('d-m-Y'), Logger::DEBUG);
-		    	//$fileHandler->setFormatter(new LineFormatter());
-		    	//$logger->pushHandler($fileHandler);
 
 		    	return $logger;
 			}),
 		]);
 	}
-
-	public static function getContainer()
-	{
-		return self::$container;
-	}
-
-	public static function getRootDir()
-    {
-		return dirname(__DIR__);
-    }
-    
-    public static function getLogDir()
-    {
-		return dirname(__DIR__).'/var/logs';
-    }
 }

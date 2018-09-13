@@ -9,13 +9,29 @@
 
 namespace Hetwan\Helper\Console\Command;
 
-use Hetwan\Helper\Player\PlayerHelper;
-
-use Hetwan\Loader\MapDataLoader;
+use Hetwan\Helper\Console\Command\Base\CommandArgument;
 
 
-class TeleportCommand extends AbstractCommand
+final class TeleportCommand extends \Hetwan\Helper\Console\Command\Base\Command
 {
+	/**
+	 * @Inject
+	 * @var \Hetwan\Helper\MapDataHelper
+	 */
+	private $mapDataHelper;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Helper\Player\PlayerHelper
+	 */
+	private $playerHelper;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Loader\MapDataLoader
+	 */
+	private $mapDataLoader;
+
 	public function __construct()
 	{
 		$this->name = 'teleport';
@@ -27,24 +43,32 @@ class TeleportCommand extends AbstractCommand
 		];
 	}
 
-	public function execute($arguments, $playerId)
+	public function execute(array $arguments, int $playerId)
 	{
 		$playersTeleported = [];
 
-		if (($mapData = MapDataLoader::getMapWithId($arguments[0])) == null)
-			return $this->errorMessage(sprintf("Map '%d' doesn't exists", $arguments[0]));
+		$mapData = $this->mapDataLoader->getBy(['id' => $arguments[0]], false, true);
 
-		foreach ((!isset($arguments[2]) ? [$playerId] : $arguments[2]) as $playerId)
-			if (($clientId = \Hetwan\Network\Game\GameServer::getClientWithPlayer($playerId)) != null)
-			{
-				PlayerHelper::teleport($clientId, $mapData, $arguments[1]);
+		if ($mapData === null) {
+            return $this->errorMessage('Map ' . $arguments[0] . ' doesn\'t exists');
+        }
+
+		$players = (!isset($arguments[2]) ? [$playerId] : $arguments[2]);
+
+		foreach ($players as $playerId) {
+			if (($client = $this->playerHelper->getClientWithId($playerId)) !== null) {
+				$this->mapDataHelper->teleportPlayer($mapData, $arguments[1], $client);
 
 				$playersTeleported[] = $playerId;
 			}
+		}
+		
+		unset($players);
 
-		if (empty($playersTeleported))
+		if (empty($playersTeleported)) {
 			return $this->errorMessage('Unable to teleport any players.');
+		}
 
-		return $this->successMessage(sprintf('Player(s) [%s] successfully teleported.', implode(', ', $playersTeleported)));
+		return $this->successMessage('Player(s) [' . implode(', ', $playersTeleported) . '] successfully teleported.');
 	}
 }

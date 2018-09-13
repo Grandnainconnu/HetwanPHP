@@ -1,28 +1,21 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-12-23 23:29:06
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-27 00:53:04
- */
-
 namespace Hetwan\Helper\Console;
 
 
 trait ConsoleMessageTrait
 {
-	public function standardMessage($message, $type = 0)
+	public function standardMessage(string $message, $type = 0) : array
 	{
 		return [$message, $type];
 	}
 
-	public function errorMessage($message)
+	public function errorMessage(string $message) : array
 	{
 		return $this->standardMessage($message, 1);
 	}
 
-	public function successMessage($message)
+	public function successMessage(string $message) : array
 	{
 		return $this->standardMessage($message, 2);
 	}

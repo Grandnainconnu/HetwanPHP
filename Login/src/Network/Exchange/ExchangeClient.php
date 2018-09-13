@@ -9,7 +9,6 @@
 
 namespace Hetwan\Network\Exchange;
 
-use Hetwan\Network\Login\LoginServer;
 use Hetwan\Network\Exchange\Handler\AuthentificationHandler;
 use Hetwan\Network\Exchange\Protocol\Formatter\ExchangeMessageFormatter;
 
@@ -28,7 +27,7 @@ final class ExchangeClient extends \Hetwan\Network\Base\Client
 	protected $baseHandler = AuthentificationHandler::class;
 	
 	/**
-	 * @var \Hetwan\Entity\Server
+	 * @var \Hetwan\Entity\ServerEntity
 	 */
 	private $server;
 
@@ -44,7 +43,7 @@ final class ExchangeClient extends \Hetwan\Network\Base\Client
 		$this->send(ExchangeMessageFormatter::accountTicketMessage($ticketKey, $ipAddress, $accountId));
 	}
 
-	public function setServer(\Hetwan\Entity\Server &$server) : \Hetwan\Network\Exchange\ExchangeClient
+	public function setServer(\Hetwan\Entity\ServerEntity &$server) : \Hetwan\Network\Exchange\ExchangeClient
 	{
 		$this->server = $server;
 
@@ -70,7 +69,7 @@ final class ExchangeClient extends \Hetwan\Network\Base\Client
 		return $this;
 	}
 
-	public function getServer() : ?\Hetwan\Entity\Server
+	public function getServer() : ?\Hetwan\Entity\ServerEntity
 	{
 		return $this->server;
 	}

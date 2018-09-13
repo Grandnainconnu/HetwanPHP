@@ -12,23 +12,28 @@ namespace Hetwan\Network\Game\Protocol\Formatter;
 
 class ChannelMessageFormatter
 {
-    public static function addChannelsMessage($channels)
+    public static function addChannelsMessage(array $channels)
     {
     	$packet = ['cC+'];
 
-    	if (!empty($channels))
-    		foreach ($channels as $channel)
-    			$packet[] = $channel;
+    	if (!empty($channels)) {
+    		foreach ($channels as $channel) {
+                $packet[] = $channel;
+            }
+        }
 
     	return implode('', $packet);
     }
 
-    public static function removeChannelsMessage($channels) {
+    public static function removeChannelsMessage(array $channels)
+    {
         $packet = ['cC-'];
 
-        if (!empty($channels))
-            foreach ($channels as $channel)
+        if (!empty($channels)) {
+            foreach ($channels as $channel) {
                 $packet[] = $channel;
+            }
+        }
 
         return implode('', $packet);
     }

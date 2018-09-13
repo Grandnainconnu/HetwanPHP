@@ -10,7 +10,7 @@
 namespace Hetwan\Network\Exchange\Protocol\Formatter;
 
 
-class ExchangeMessageFormatter
+final class ExchangeMessageFormatter
 {
 	public static function helloConnectMessage($serverId, $serverKey, $ipAddress, $port) 
 	{

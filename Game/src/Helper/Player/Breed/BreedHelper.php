@@ -1,18 +1,11 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-10-26 15:35:32
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-18 18:47:20
- */
-
 namespace Hetwan\Helper\Player\Breed;
 
-use Hetwan\Network\Game\Protocol\Enum\ItemEffectEnum;
+use XMLReader;
 
 
-class BreedHelper
+final class BreedHelper
 {
 	/**
 	 * @var array
@@ -23,24 +16,22 @@ class BreedHelper
 	{
 		$directory = realpath(dirname(__FILE__));
 
-		foreach (scandir($directory) as $breedFile)
-		{
-			if (pathinfo($breedFile)['extension'] != 'xml')
+		foreach (scandir($directory) as $breedFile) {
+			if (pathinfo($breedFile)['extension'] !== 'xml') {
 				continue;
+			}
 
 			$breedFile = $directory . '/' . $breedFile;
 			$breed = ['name' => substr(basename($breedFile), 0, -4)];
 
-			$XMLReader = new \XMLReader();
+			$XMLReader = new XMLReader();
 			$XMLReader->open($breedFile);
 
-			while ($XMLReader->read())
-			{
+			while ($XMLReader->read()) {
 				static $lastCharacteristicId = null;
 
-				if ($XMLReader->nodeType == \XMLReader::ELEMENT)
-					switch ($XMLReader->name)
-					{
+				if ($XMLReader->nodeType == XMLReader::ELEMENT) {
+					switch ($XMLReader->name) {
 						case 'breed':
 							$breed['id'] = $XMLReader->getAttribute('id');
 							$breed['startActionPoints'] = $XMLReader->getAttribute('startActionPoints');
@@ -54,17 +45,19 @@ class BreedHelper
 						case 'levels':
 							$lastCharacteristicId = $characteristicId = strtolower($XMLReader->getAttribute('type'));
 
-							if (!isset($breed['characteristics']))
+							if (!isset($breed['characteristics'])) {
 								$breed['characteristics'] = [$characteristicId => []];
-							else
+							} else { 
 								$breed['characteristics'][$characteristicId] = [];
+							}
 
 							break;
 						case 'level':
 							$range = explode('..', $XMLReader->getAttribute('range'));
 
-							if (empty($range[1]))
+							if (empty($range[1])) {
 								$range[1] = null;
+							}
 
 							$characteristicRange = [
 								'range' => $range,
@@ -76,36 +69,49 @@ class BreedHelper
 
 							break;
 					}
+				}
 			}
 
-			foreach ($breed['characteristics'] as $k => $_)
-				usort($breed['characteristics'][$k], function ($a, $b)
-				{
-					return (intval($a['range'][0]) > intval($b['range'][0]));
-				});
+			foreach ($breed['characteristics'] as $k => $_) {
+				usort($breed['characteristics'][$k], [BreedHelper::class, 'sortCharacteristics']);
+			}
 
 			$XMLReader->close();
 
 			self::$breeds[$breed['id']] = $breed;
 		}
 	}
-
-	public static function getBreedFromId(int $breedId)
+	
+	private static function sortCharacteristics(array $a, array $b)
 	{
-		if (!count(self::$breeds))
-    		self::loadBreeds();
-
-		if (isset(self::$breeds[$breedId]))
-			return self::$breeds[$breedId];
+		return (int)$a['range'][0] > (int)$b['range'][0];
 	}
 
-	public static function getBreedFromName($breedName)
+	public static function getFromId(int $breedId) : ?array
 	{
-		if (!count(self::$breeds))
-    		self::loadBreeds();
+		if (!count(self::$breeds)) {
+			self::loadBreeds();
+		}
 
-		foreach (self::$breeds as $breed)
-			if ($breed['name'] == $breedName)
+		if (isset(self::$breeds[$breedId])) {
+			return self::$breeds[$breedId];
+		}
+
+		return null;
+	}
+
+	public static function getFromName(string $breedName) : ?array
+	{
+		if (!count(self::$breeds)) {
+			self::loadBreeds();
+		}
+
+		foreach (self::$breeds as $breed) {
+			if ($breed['name'] === $breedName) {
 				return $breed;
+			}
+		}
+
+		return null;
 	}
 }

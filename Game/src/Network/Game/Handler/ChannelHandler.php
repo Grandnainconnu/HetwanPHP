@@ -1,54 +1,52 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-12-16 13:17:21
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-16 14:48:24
- */
-
 namespace Hetwan\Network\Game\Handler;
 
+use Hetwan\Network\Game\Base\Handler\HandlerTrait;
 use Hetwan\Network\Game\Protocol\Formatter\ChannelMessageFormatter;
 
-use Hetwan\Network\Game\Protocol\Enum\ChannelEnum;
 
-class ChannelHandler extends AbstractGameHandler
+class ChannelHandler extends \Hetwan\Network\Base\Handler\Handler
 {
-	public function handle($data)
+	use HandlerTrait;
+
+	public function handle(string $data) : bool
 	{
-		switch (substr($data, 0, 1))
-		{
+		switch ($data[0]) {
 			case 'C':
 				$channel = substr($data, 2, 1);
 
-				if (substr($data, 1, 1) == '+')
-					$this->parseAddChannelMessage($channel);
-				else
-					$this->parseRemoveChannelMessage($channel);
+				if (substr($data, 1, 1) == '+') {
+                    $this->parseAddChannelMessage($channel);
+                } else {
+                    $this->parseRemoveChannelMessage($channel);
+                }
+
 				break;
 			default:
-				echo "Unable to handle channel packet: {$data}\n";
+                $this->logger->debug('Unable to handle channel packet: ' . $data . PHP_EOL);
 
 				break;
 		}
+
+		return true;
 	}
 
-	private function parseAddChannelMessage($channel)
+	private function parseAddChannelMessage(string $channel) : void
 	{
-		if (in_array($channel, ($channels = $this->getPlayer()->getChannels())) == false)
-			$this->getPlayer()->setChannels(array_merge($channels, [$channel]));
+		if (in_array($channel, ($channels = explode(';',$this->getPlayer()->getChannels()))) === false) {
+            $this->getPlayer()->setChannels(implode(';', array_merge($channels, [$channel])));
+        }
 
 		$this->send(ChannelMessageFormatter::addChannelsMessage([$channel]));
 	}
 
-	private function parseRemoveChannelMessage($channel)
+	private function parseRemoveChannelMessage(string $channel) : void
 	{
-		if (in_array($channel, ($channels = $this->getPlayer()->getChannels())))
-		{
+		if (in_array($channel, ($channels = explode(';',$this->getPlayer()->getChannels())))) {
 			unset($channels[array_search($channel, $channels)]);
 
-			$this->getPlayer()->setChannels($channels);
+			$this->getPlayer()->setChannels(implode(';', $channels));
 		}
 
 		$this->send(ChannelMessageFormatter::removeChannelsMessage([$channel]));

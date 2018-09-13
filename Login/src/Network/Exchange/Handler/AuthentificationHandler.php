@@ -16,7 +16,7 @@ final class AuthentificationHandler extends \Hetwan\Network\Base\Handler\Handler
 {
 	/**
 	 * @Inject
-	 * @var \Hetwan\Loader\Server
+	 * @var \Hetwan\Loader\ServerLoader
 	 */
 	private $serverLoader;
 

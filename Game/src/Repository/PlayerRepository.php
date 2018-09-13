@@ -1,26 +1,19 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-18 13:48:51
- * @Last Modified by:   jean
- * @Last Modified time: 2017-09-18 13:56:27
- */
-
 namespace Hetwan\Repository;
 
-use Doctrine\ORM\EntityRepository;
+use Hetwan\Entity\Game\PlayerEntity;
 
 
-class PlayerRepository extends EntityRepository
+final class PlayerRepository extends \Doctrine\ORM\EntityRepository
 {
-	public function countByNameCaseInsensitive($name)
+	public function countByNameCaseInsensitive(string $name) : int
 	{
        	$query = $this->getEntityManager()
             		  ->createQueryBuilder()
             		  ->select('COUNT(p)')
 			          ->where('upper(p.name) = upper(:name)')
-			          ->from('\Hetwan\Entity\Login\Player', 'p')
+			          ->from(PlayerEntity::class, 'p')
 			          ->setParameter('name', $name);
 
 		return $query->getQuery()->getSingleScalarResult();

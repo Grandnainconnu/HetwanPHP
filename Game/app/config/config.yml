@@ -1,12 +1,13 @@
 server:
-  id: 1
-  key: 'rushu'
+  id: 2
+  key: 'Rushu'
 
 network:
   game:
     port: 8788
     ip: '127.0.0.1'
   exchange:
+    timeout: 5
     port: 8787
     ip: '127.0.0.1'
 
@@ -15,9 +16,9 @@ database:
     host: 'localhost'
     user: 'grandnainconnu'
     password: 'ehp[a]sw'
-    name: 'hetwan'
+    name: 'hetwan_login'
   game:
     host: 'localhost'
     user: 'grandnainconnu'
     password: 'ehp[a]sw'
-    name: 'hetwan'
+    name: 'hetwan_game'

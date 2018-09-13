@@ -1,16 +1,9 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-09-04 19:16:59
- * @Last Modified by:   Jean Walrave
- * @Last Modified time: 2018-04-11 14:11:10
- */
-
 namespace Hetwan\Network\Login\Handler;
 
-use Hetwan\Entity\Account;
-use Hetwan\Helper\Hash;
+use Hetwan\Entity\AccountEntity;
+use Hetwan\Helper\HashHelper;
 use Hetwan\Network\Login\Protocol\Formatter\LoginMessageFormatter;
 use Hetwan\Network\Exchange\Protocol\Formatter\ExchangeMessageFormatter;
 
@@ -25,9 +18,9 @@ final class AuthentificationHandler extends \Hetwan\Network\Login\Handler\Base\H
 
 	/**
 	 * @Inject
-	 * @var \Hetwan\Network\Login\LoginServer
+	 * @var \Hetwan\Helper\AccountHelper
 	 */
-	private $loginServer;
+	private $accountHelper;
 
 	public function handle(string $packet) : bool
 	{
@@ -40,10 +33,10 @@ final class AuthentificationHandler extends \Hetwan\Network\Login\Handler\Base\H
 		list($username, $password) = explode('#', $packet);
 
 		$account = $this->entityManager->get()
-								   	   ->getRepository(Account::class)
+								   	   ->getRepository(AccountEntity::class)
 								   	   ->findOneByUsername($username);
 
-		if (!$account or Hash::encryptValue($account->getPassword(), $this->client->key) !== $password) {
+		if (!$account or HashHelper::encryptValue($account->getPassword(), $this->client->key) !== $password) {
 			$this->send(LoginMessageFormatter::identificationFailedMessage());
 		} else {
 			$this->entityManager->get()
@@ -51,7 +44,7 @@ final class AuthentificationHandler extends \Hetwan\Network\Login\Handler\Base\H
 
 			if (($ban = $account->getIsBanned()) !== null) {
 				$this->send(LoginMessageFormatter::accountBannedMessage($ban->getEndDate()));
-			} elseif ($this->loginServer->getClientWithAccount($account->getId()) !== null) {
+			} elseif ($this->accountHelper->getClientWithId($account->getId()) !== null) {
 				$this->send(LoginMessageFormatter::accountAlreadyConnectedMessage());
 			} elseif ($account->getIsOnline() === true) {
 				$clientsPool = $this->exchangeServer->getClientsPool();
@@ -64,7 +57,9 @@ final class AuthentificationHandler extends \Hetwan\Network\Login\Handler\Base\H
 
 				$this->send(LoginMessageFormatter::accountAlreadyConnectedOnGameServerMessage());
 			} else {
-				$this->client->setAccount($account);
+				$this->client->setAccount(
+				    $this->entityManager->refresh($account)
+                );
 
 				if ($account->getNickname() === null) {
 					$this->client->setHandler(NicknameChoiceHandler::class);

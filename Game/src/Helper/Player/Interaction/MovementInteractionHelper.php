@@ -9,50 +9,53 @@
 
 namespace Hetwan\Helper\Player\Interaction;
 
-use Hetwan\Util\Cryptography;
-
-use Hetwan\Helper\MapDataHelper;
-
-use Hetwan\Network\Game\GameClient;
+use Hetwan\Helper\HashHelper;
 use Hetwan\Network\Game\Protocol\Enum\ActionTypeEnum;
 
 
-class MovementInteractionHelper
+class MovementInteractionHelper implements \Hetwan\Helper\Player\Interaction\Base\InteractionInterface
 {
-	private $client,
-			$path;
+	/**
+	 * @Inject
+	 * @var \Hetwan\Helper\MapDataHelper
+	 */
+	private $mapDataHelper;
 
-	public function __construct(GameClient $client, $path)
+	/**
+	 * @var \Hetwan\Entity\Game\PlayerEntity
+	 */
+	private $player;
+
+	/**
+	 * @var string
+	 */
+	private $path;
+
+	public function __construct(\Hetwan\Entity\Game\PlayerEntity $player, $path)
 	{
-		$this->client = $client;
+		$this->player = $player;
 		$this->path = $path;
 	}
 
-	public function getType()
+	public function begin() : void
+	{
+		$this->mapDataHelper->movePlayer($this->player->getMapId(), $this->player, $this->path);
+	}
+
+	public function end() : void
+	{
+		$this->player->setCellId(HashHelper::cellIdDecode(substr($this->path, -2)))
+					 ->setOrientation(ord(substr($this->path, -3, 1)) - ord('a'));
+	}
+
+	public function cancel(int $orientation, int $cellId) : void
+	{
+		$this->player->setCellId($cellId)
+					 ->setOrientation($orientation);
+	}
+
+	public function getType() : int
 	{
 		return ActionTypeEnum::MOVEMENT;
-	}
-
-	public function begin()
-	{
-		MapDataHelper::movePlayerInMap(
-			(int) $this->client->getPlayer()->getMapId(), 
-			$this->client->getPlayer(),
-			$this->path
-		);
-	}
-
-	public function cancel($orientation, $cellId)
-	{
-		// Update player to final position
-		$this->client->getPlayer()->setCellId($cellId);
-		$this->client->getPlayer()->setOrientation($orientation);
-	}
-
-	public function end()
-	{
-		// Update player to final position
-		$this->client->getPlayer()->setCellId(Cryptography::cellIdDecode(substr($this->path, -2)));
-		$this->client->getPlayer()->setOrientation(ord(substr($this->path, -3, 1)) - ord('a'));
 	}
 }

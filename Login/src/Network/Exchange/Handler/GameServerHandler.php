@@ -1,15 +1,6 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-12 10:13:06
- * @Last Modified by:   Jean Walrave
- * @Last Modified time: 2018-04-11 14:09:03
- */
-
 namespace Hetwan\Network\Exchange\Handler;
-
-use Hetwan\Network\Exchange\Protocol\Formatter\ExchangeMessageFormatter;
 
 
 final class GameServerHandler extends \Hetwan\Network\Base\Handler\Handler

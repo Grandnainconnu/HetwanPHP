@@ -1,113 +1,80 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-08 15:22:56
- * @Last Modified by:   jean
- * @Last Modified time: 2017-09-20 13:26:34
- */
-
 namespace Hetwan\Network\Exchange;
 
-use App\AppKernel;
-
+use Hetwan\Network\Exchange\Handler\AuthentificationHandler;
 use Hetwan\Network\Exchange\Protocol\Formatter\ExchangeMessageFormatter;
 
 
-class ExchangeClient extends \Hetwan\Network\AbstractClient
+final class ExchangeClient extends \Hetwan\Network\Exchange\Base\Client
 {
+	/**
+	 * @var \Hetwan\Entity\Login\Server
+	 */
+	private $server;
+
 	/**
 	 * @var int
 	 */
-	protected $serverState;
+	private $serverState;
 
 	/**
 	 * @var array
 	 */
-	protected static $tickets = [];
+	private $tickets = [];
 
-	public function __construct(\React\Socket\ConnectionInterface $conn)
+	public function initialize() : void
 	{
-		parent::__construct($conn);
-
-		$this->setHandler('\Hetwan\Network\Exchange\Handler\AuthentificationHandler');
-
-		$conn->on('data', [$this, 'onMessage']);
-		$conn->on('error', [$this, 'onError']);
-		$conn->on('end', [$this, 'onClose']);
+		$this->setHandler(AuthentificationHandler::class);
 	}
 
-	public function onMessage($message)
+	public function addTicket(string $ticketId, string $ipAddress, int $accountId) : void
 	{
-        $packets = array_filter(
-            explode("\n", $message)
-        );
-
-    	foreach ($packets as $packet)
-    	{
-        	AppKernel::getContainer()->get('logger')->debug("(Exchange client) Received packet: {$packet}\n");
-
-            if ($this->handler->handle($packet) == false)
-                break;
-        }
+		$this->tickets[$ticketId] = [
+			'ipAddress' => $ipAddress, 
+			'accountId' => $accountId
+		];
 	}
 
-	public function onError(\Exception $exception)
-	{
-		$this->connection->close();
-
-		AppKernel::getContainer()->get('logger')->debug("(Exchange client) Error: {$exception->getMessage()}\n");
+	public function removeTicket(string $ticketId) : void
+	{	
+		if (isset($this->tickets[$ticketId])) {
+			unset($this->tickets[$ticketId]);
+		}		
 	}
 
-	public function onClose()
-	{
-		\Hetwan\Core\Core::getLoop()->stop();
-
-		AppKernel::getContainer()->get('logger')->debug("(Exchange client) Connection closed\n");
-	}
-
-	public function send($packet)
-	{
-		AppKernel::getContainer()->get('logger')->debug("(Exchange client) Sending packet: {$packet}\n");
-
-		$this->connection->write($packet . "\n");
-	}
-
-	public function setServer(\Hetwan\Entity\Server &$server)
+	public function setServer(\Hetwan\Entity\Login\Server &$server) : \Hetwan\Network\Exchange\ExchangeClient
 	{
 		$this->server = $server;
+
+		return $this;
 	}
 
-	public function getServerState()
-	{
-		return $this->serverState;
-	}
-
-	public function setServerState($state)
+	public function setServerState(int $state) : \Hetwan\Network\Exchange\ExchangeClient
 	{
 		$this->serverState = $state;
 
 		$this->send(ExchangeMessageFormatter::serverStateMessage($state));
+
+		return $this;
 	}
 
-	public function addTicket($ticketId, $ipAddress, $accountId)
+	public function getTicket(string $ticketId) : ?array
 	{
-		self::$tickets[$ticketId] = ['ipAddress' => $ipAddress, 'accountId' => $accountId];
-	}
-
-	public static function removeTicket($ticketId)
-	{	
-		if (!isset(self::$ticketId[$ticketId]))
-			return;
-		
-		unset(self::$tickets[$ticketId]);
-	}
-
-	public static function getTicket($ticketId)
-	{
-		if (!isset(self::$tickets[$ticketId]))
+		if (!isset($this->tickets[$ticketId])) {
 			return null;
+		}
 
-		return self::$tickets[$ticketId];
+		return $this->tickets[$ticketId];
+	}
+
+	public function getServer() : ?\Hetwan\Entity\Login\Server
+	{
+		return $this->server;
+	}
+
+	public function getServerState() : ?int
+	{
+		return $this->serverState;
 	}
 }

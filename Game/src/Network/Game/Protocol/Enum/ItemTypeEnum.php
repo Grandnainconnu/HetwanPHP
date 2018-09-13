@@ -199,6 +199,6 @@ class ItemTypeEnum extends AbstractEnum
 
 	public static function isResource($type)
 	{
-		return !ItemTypeEnum::isEquipement($type) || !ItemTypeEnum::isUsable($type);
+		return (!ItemTypeEnum::isEquipement($type) || !ItemTypeEnum::isUsable($type));
 	}
 }

@@ -1,79 +1,123 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-09-04 10:40:11
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-10-31 22:47:13
- */
-
 namespace Hetwan\Core;
-
-use React\EventLoop\Factory as LoopFactory;
-use React\Socket\Connector;
 
 use Ratchet\Server\IoServer;
 
 
-class Core
+
+final class Core
 {
 	/**
-	 * @var \React\EventLoop\Factory
+	 * @Inject
+	 * @var \DI\Container
 	 */
-	protected static $loop;
+	private $container;
 
-	public function __construct()
+	/**
+	 * @Inject
+	 * @var \Hetwan\Core\Configuration
+	 */
+	private $configuration;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Core\EntityManager
+	 */
+	private $entityManager;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Network\Game\GameServer
+	 */
+	private $gameServer;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Network\Exchange\ExchangeConnection
+	 */
+	private $exchangeConnection;
+
+	/**
+	 * @Inject
+	 * @var \Monolog\Logger
+	 */
+	private $logger;
+
+	/**
+	 * @Inject
+	 * @var \React\EventLoop\LoopInterface
+	 */
+	private $loop;
+
+	public function initialize() : void
 	{
-		self::$loop = LoopFactory::create();
+	    //$this->initializeDoctrineEvents();
+		$this->initalizeEntityManager();
+		$this->initializeServers();
 
-		// Load static data
-		\App\AppKernel::getContainer()->get('database')->load();
-	}
-
-	public function makeGameServer()
-	{
-		$uri = [
-			'address' => \App\AppKernel::getContainer()->get('configuration')->get('network.game.ip'),
-			'port' => \App\AppKernel::getContainer()->get('configuration')->get('network.game.port')
-		];
-
-		IoServer::factory(
-			\App\AppKernel::getContainer()->make('Hetwan\Network\Game\GameServer'),
-			$uri['port'],
-			$uri['address'],
-			self::$loop
-		);
-	}
-
-	public function makeExchangeClient()
-	{
-		$uri = [
-			'address' => \App\AppKernel::getContainer()->get('configuration')->get('network.exchange.ip'),
-			'port' => \App\AppKernel::getContainer()->get('configuration')->get('network.exchange.port')
-		];
-
-		$exchangeClient = new Connector(self::$loop, ['timeout' => 5.00, 'dns' => false]);
-		$exchangeClient->connect($uri['address'] . ':' . $uri['port'])->then(
-			function (\React\Socket\ConnectionInterface $connection) {
-				\App\AppKernel::getContainer()->get('logger')->debug("Exchange client started\n");
-
-				new \Hetwan\Network\Exchange\ExchangeClient($connection);
-			},
-			function (\Exception $exception) {
-        		\App\AppKernel::getContainer()->get('logger')->error("Unable to start exchange client !\n");
-
-        		self::$loop->stop();
-			}
-		);
+		$this->logger->debug('Core initialized');
 	}
 
 	public function run()
 	{
-		self::$loop->run();
+		$this->loop->run();
 	}
 
-	public static function getLoop()
+	public function quit() : void
 	{
-		return self::$loop;
+		$this->gameServer->onQuit();
+
+		$this->loop->stop();
+	}
+
+	/*
+	private function initializeDoctrineEvents() : void
+    {
+        $subscribers = [
+            MetadataEventSubscriber::class,
+        ];
+
+        foreach ($subscribers as $subscriber) {
+            $this->doctrineEventManager->addEventSubscriber($this->container->make($subscriber));
+        }
+
+        unset($subscribers);
+    }
+	*/
+
+	private function initalizeEntityManager() : void
+	{
+		$this->logger->debug('Initializing entity manager...');
+
+		$this->entityManager->create(ROOT . '/Entity/Login', $prefix = 'database.login', $name = 'login');
+		$this->entityManager->create(ROOT . '/Entity/Game', $prefix = 'database.game');
+
+		$this->logger->debug('Entity manager initialized');
+	}
+
+	private function initializeServers() : void
+	{
+		// Initialize game server
+		$this->logger->debug('Initializing game server...');
+
+		IoServer::factory(
+			$this->gameServer,
+			$this->configuration->get('network.game.port'),
+			$this->configuration->get('network.game.ip'),
+			$this->loop
+		);
+
+		$this->logger->debug('Game server initialized');
+
+		// Initialize exchange connection
+		$this->exchangeConnection->initialize();
+
+		$this->loop->addPeriodicTimer($this->configuration->get('network.exchange.timeout') + 1, function () {
+			if (!$this->exchangeConnection->isAlive()) {
+				$this->exchangeConnection->removeClient()
+										 ->initialize();
+			}
+		});
 	}
 }

@@ -1,23 +1,77 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-09-04 21:29:02
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-10-24 14:43:22
- */
-
 namespace Hetwan\Helper;
 
+use Hetwan\Entity\Game\PlayerEntity;
 
-class AccountHelper extends AbstractHelper
+
+final class AccountHelper
 {
-	public static function hasPlayer($players, $playerId, $returnEntity = false)
-	{
-		foreach ($players as $player)
-			if ($player->getId() == $playerId)
-				return !$returnEntity ? true : $player;
+    /**
+     * @Inject
+     * @var \Hetwan\Core\EntityManager
+     */
+    private $entityManager;
 
-		return null;
-	}
+    /**
+     * @Inject
+     * @var \Hetwan\Network\Game\GameServer
+     */
+    private $gameServer;
+
+    public function hasPlayer(int $playerId, iterable $accountPlayers, bool $returnEntity = false)
+    {
+        foreach ($accountPlayers as $serverId) {
+            foreach ($serverId as $player) {
+                if ($player === $playerId) {
+                    if ($returnEntity) {
+                        return $this->entityManager->get()
+                                                   ->getRepository(PlayerEntity::class)
+                                                   ->findOneById($playerId);
+                    }
+
+                    return true;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function getPlayers(int $accountId) : iterable
+    {
+        return $this->entityManager->get()
+                                   ->getRepository(PlayerEntity::class)
+                                   ->findByAccountId($accountId);
+    }
+
+    public function getClient(\Hetwan\Entity\Login\AccountEntity $account) : ?\Hetwan\Network\Game\GameClient
+    {
+        $clients = $this->gameServer->getClientsPool();
+
+        foreach ($clients as $client) {
+            if (($clientAccount = $client->getAccount()) and $clientAccount === $account) {
+                return $client;
+            }
+        }
+
+        unset($clients);
+
+        return null;
+    }
+
+    public function getClientWithId(int $accountId) : ?\Hetwan\Network\Game\GameClient
+    {
+        $clients = $this->gameServer->getClientsPool();
+
+        foreach ($clients as $client) {
+            if (($clientAccount = $client->getAccount()) and $clientAccount->getId() === $accountId) {
+                return $client;
+            }
+        }
+
+        unset($clients);
+
+        return null;
+    }
 }

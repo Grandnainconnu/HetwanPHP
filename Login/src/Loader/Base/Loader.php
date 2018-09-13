@@ -58,7 +58,7 @@ abstract class Loader
 										  	->findAll();
 	}
 
-	public function &getBy(array $filters, $assertCount = false, $first = false)
+	public function getBy(array $filters, $assertCount = false, $first = false)
 	{
 		$toReturn = [];
 

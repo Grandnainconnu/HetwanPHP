@@ -9,23 +9,18 @@
 
 namespace Hetwan\Loader;
 
+use Hetwan\Entity\Game\SubAreaDataEntity;
 
-final class SubAreaDataLoader extends AbstractGameLoader
+
+final class SubAreaDataLoader extends \Hetwan\Loader\Base\Loader
 {
-	protected static $entity = '\Hetwan\Entity\Game\SubAreaData';
+	/**
+	 * @var string
+	 */
+	protected $entity = SubAreaDataEntity::class;
 
 	/**
-	 * @var array
+	 * @var bool
 	 */
-	protected static $values;
-
-	public function loadAll()
-	{
-		self::$values = self::$entityManager->getRepository(self::$entity)->findAll();
-	}
-
-	public static function getSubAreasData()
-	{
-		return self::$values;
-	}
+	protected $loadAll = true;
 }

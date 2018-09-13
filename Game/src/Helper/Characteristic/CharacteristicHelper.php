@@ -9,31 +9,42 @@
 
 namespace Hetwan\Helper\Characteristic;
 
+use Hetwan\Helper\Characteristic\Player\Characteristics;
+use Hetwan\Helper\Player\Breed\BreedHelper;
 
-class CharacteristicHelper
+
+final class CharacteristicHelper
 {
-	public static function makePlayerCharacteristics($player)
+	public static function generatePlayerCharacteristics(\Hetwan\Entity\Game\PlayerEntity $player) : \Hetwan\Helper\Characteristic\Player\Characteristics
 	{
-		return new PlayerCharacteristics($player);
+		return new Characteristics($player);
 	}
 
-	public static function upgradePlayerCharacteristic($player, $characteristicId)
+	public static function upgradePlayerCharacteristic(string $characteristicId, \Hetwan\Entity\Login\PlayerEntity $player) : bool
 	{
 		$characteristic = $player->getCharacteristics()->getCharacteristic($characteristicId);
+		$levels = BreedHelper::getFromId($player->getBreed())['characteristics'][$characteristicId];
+		$updated = false;
 
-		foreach (\Hetwan\Helper\Player\Breed\BreedHelper::getBreedFromId($player->getBreed())['characteristics'][$characteristicId] as $level)
-			if (intval($level['range'][0]) <= $characteristic->getBase() && ($level['range'][1] == null || intval($level['range'][1]) >= $characteristic->getBase()) && ($pointsOfCharacteristics = $player->getPointsOfCharacteristics() - intval($level['cost'])) >= 0)
-			{
+		foreach ($levels as $level) {
+			if ((int)$level['range'][0] <= $characteristic->getBase() and 
+				($level['range'][1] === null or (int)$level['range'][1] >= $characteristic->getBase()) and
+				($pointsOfCharacteristics = $player->getPointsOfCharacteristics() - (int)($level['cost'])) >= 0
+            ) {
 				// Remove points of characteristic
 				$player->setPointsOfCharacteristics($pointsOfCharacteristics);
-				
-				// Update charac base
-				$characteristic->setBase($characteristic->getBase() + intval($level['bonus']));
 
-				// Update secondary characs (initiative, prospection, pods)
-				$player->getCharacteristics()->updateSecondaryCharacteristics($player);
+				// Update base
+				$characteristic->setBase($characteristic->getBase() + (int)$level['bonus']);
 
-				return (true);
+				$updated = true;
+
+				break;
 			}
+		}
+
+		unset($levels);
+
+		return $updated;
 	}
 }

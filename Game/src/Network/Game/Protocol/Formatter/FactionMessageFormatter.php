@@ -14,15 +14,11 @@ class FactionMessageFormatter
 {
 	public static function subAreasFactionsMessage($subAreas)
 	{
-		$subAreaFactionFormatter = function ($subArea)
-		{
-			return "{$subArea->getId()};{$subArea->getFactionId()}";
-		};
-
 		$packet = ['al'];
 
-		foreach ($subAreas as $subArea)
-			$packet[] = $subAreaFactionFormatter($subArea);
+		foreach ($subAreas as $subArea) {
+			$packet[] = $subArea->getId() . ';' . $subArea->getFactionId();
+		}
 
 		return implode('|', $packet);
 	}

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PhpIncludePathManager">
+    <include_path>
+      <path value="$PROJECT_DIR$/Game/vendor/evenement/evenement" />
+      <path value="$PROJECT_DIR$/Game/vendor/guzzlehttp/psr7" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/routing" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/console" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/polyfill-ctype" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/polyfill-php56" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/polyfill-util" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/cache" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/polyfill-mbstring" />
+      <path value="$PROJECT_DIR$/Game/vendor/composer" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/reflection" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/cache" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/http-foundation" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/event-manager" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/stream" />
+      <path value="$PROJECT_DIR$/Game/vendor/symfony/yaml" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/annotations" />
+      <path value="$PROJECT_DIR$/Game/vendor/psr/container" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/dns" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/lexer" />
+      <path value="$PROJECT_DIR$/Game/vendor/psr/http-message" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/promise" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/common" />
+      <path value="$PROJECT_DIR$/Game/vendor/psr/log" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/promise-timer" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/collections" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/socket" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/instantiator" />
+      <path value="$PROJECT_DIR$/Game/vendor/grandnain/ratchet" />
+      <path value="$PROJECT_DIR$/Game/vendor/react/event-loop" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/inflector" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/persistence" />
+      <path value="$PROJECT_DIR$/Game/vendor/php-di/php-di" />
+      <path value="$PROJECT_DIR$/Game/vendor/php-di/phpdoc-reader" />
+      <path value="$PROJECT_DIR$/Game/vendor/php-di/invoker" />
+      <path value="$PROJECT_DIR$/Game/vendor/monolog/monolog" />
+      <path value="$PROJECT_DIR$/Game/vendor/jeremeamia/SuperClosure" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/orm" />
+      <path value="$PROJECT_DIR$/Game/vendor/nikic/php-parser" />
+      <path value="$PROJECT_DIR$/Game/vendor/ratchet/rfc6455" />
+      <path value="$PROJECT_DIR$/Game/vendor/doctrine/dbal" />
+      <path value="$PROJECT_DIR$/Game/vendor/nxp/math-executor" />
+    </include_path>
+  </component>
+  <component name="PhpProjectSharedConfiguration" php_language_level="7.3" />
+</project>

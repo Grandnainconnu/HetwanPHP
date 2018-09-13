@@ -18,12 +18,6 @@ final class Core
 {
 	/**
 	 * @Inject
-	 * @var \DI\Container
-	 */
-	private $container;
-
-	/**
-	 * @Inject
 	 * @var \Hetwan\Core\Configuration
 	 */
 	private $configuration;
@@ -86,7 +80,7 @@ final class Core
 	{
 		$this->logger->debug('Initializing entity manager...');
 
-		$this->entityManager->create(ROOT . '/Entity/');
+		$this->entityManager->create(ROOT . '/Entity/Login/');
 
 		$this->logger->debug('Entity manager initialized');
 	}

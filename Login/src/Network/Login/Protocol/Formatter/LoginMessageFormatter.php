@@ -1,23 +1,18 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-09-03 21:35:27
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-10-25 12:20:37
- */
-
 namespace Hetwan\Network\Login\Protocol\Formatter;
+
+use DateTime;
 
 
 final class LoginMessageFormatter
 {
-	public static function helloConnectMessage($key) : string
+	public static function helloConnectMessage(string $key) : string
 	{
 		return 'HC' . $key;
 	}
 
-	public static function badClientVersionMessage($requiredVersion) : string
+	public static function badClientVersionMessage(string $requiredVersion) : string
 	{
 		return 'AlEv' . $requiredVersion;
 	}
@@ -32,12 +27,12 @@ final class LoginMessageFormatter
 		return 'AlEf';
 	}
 
-	public static function accountBannedMessage($dateEnd) : string
+	public static function accountBannedMessage(\DateTime $dateEnd) : string
 	{
 		if ($dateEnd == null) {
 			return 'AlEb';
 		} else {
-			$today = new \DateTime('NOW');
+			$today = new DateTime('NOW');
 			$difference = $dateEnd->diff($today);
 
 			return 'AlEk' . $difference->format('%d') . '|' . $difference->format('%h') . '|' . $difference->format('%i');
@@ -64,9 +59,9 @@ final class LoginMessageFormatter
         return 'AlEs';
     }
 
-	public static function queueMessage($position, $subscribers, $nonSubscribers, $isSubscriber, $queuId = -1) : string
+	public static function queueMessage(int $position, int $subscribers, int $nonSubscribers, bool $isSubscriber, int $queueId = -1) : string
 	{
-		return 'Af' . $position . '|' . $subscribers . '|' . $nonSubscribers . '|' . $isSubscriber . '|' . $queuId;
+		return 'Af' . $position . '|' . $subscribers . '|' . $nonSubscribers . '|' . (int)$isSubscriber . '|' . $queueId;
 	}
 
 	public static function queueOutOfBoundsMessage() : string
@@ -74,78 +69,61 @@ final class LoginMessageFormatter
 		return 'M116';
 	}
 
-	public static function identificationSuccessMessage($hasRights) : string
+	public static function identificationSuccessMessage(bool $hasRights) : string
 	{
-		return 'AlK' . $hasRights;
+		return 'AlK' . (int)$hasRights;
 	}
 
-	public static function accountNicknameInformationMessage($nickname) : string
+	public static function accountNicknameInformationMessage(string $nickname) : string
 	{
 		return 'Ad' . $nickname;
 	}
 
-	public static function accountCommunityInformationMessage($community) : string
+	public static function accountCommunityInformationMessage(string $community) : string
 	{
 		return 'Ac' . $community;
 	}
 
-	public static function accountSecretQuestionInformationMessage($secretQuestion) : string
+	public static function accountSecretQuestionInformationMessage(string $secretQuestion) : string
 	{
 		return 'AQ' . str_replace(' ', '+', $secretQuestion);
 	}
 
-	public static function serversListMessage($servers) : string
+	public static function serversListMessage(array $servers) : string
 	{
-		$serversInformationsMessage = function($servers)
-		{
-			$serversList = [];
+		$packet = 'AH';
+		$serversInformations = [];
 
-			foreach ($servers as $server) {
-				$serversList[] = "{$server->getId()};{$server->getState()};{$server->getPopulation()};{$server->getRequireSubscription()}";
-			}
+		foreach ($servers as $server) {
+		    $serversInformations[] = implode(';', [
+		        $server->getId(),
+                $server->getState(),
+                $server->getPopulation(),
+                $server->getRequireSubscription()
+            ]);
+        }
 
-			return $serversList;
-		};
-
-		$packet = 'AH' . implode('|', $serversInformationsMessage($servers));
-
-		return $packet;
+		return $packet . implode('|', $serversInformations);
 	}
 
-	public static function playersListMessage($account) : string
+	public static function playersListMessage(\Hetwan\Entity\AccountEntity $account) : string
 	{
 		$packet = 'AxK' . $account->getSubscriptionTimeLeft();
-		$serversPlayers = [];
+		$accountPlayers = $account->getPlayers() ?? [];
 
-		foreach ($account->getPlayers() as $player) {
-			if (isset($serversPlayers[$player->getServerId()])) {
-				$serversPlayers[$player->getServerId()] += 1;
-			} else {
-				$serversPlayers[$player->getServerId()] = 1;
-			}
-		}
-
-		foreach ($serversPlayers as $serverId => $players) {
-			$packet .= '|' . $serverId . ',' . $players;
+		foreach ($accountPlayers as $serverId => $players) {
+			$packet .= '|' . $serverId . ',' . count($players);
 		}
 
 		return $packet;
 	}
 
-	public static function searchPlayersMessage($players)  : string
+	public static function searchPlayersMessage(?array $accountPlayers)  : string
 	{
 		$packet = 'AF';
-		$serversPlayers = [];
+		$accountPlayers = $accountPlayers ?? [];
 
-		foreach ($players as $player) {
-			if (isset($serversPlayers[$player->getServerId()])) {
-				$serversPlayers[$player->getServerId()] += 1;
-			} else {
-				$serversPlayers[$player->getServerId()] = 1;
-			}
-		}
-
-		foreach ($serversPlayers as $serverId => $players) {
+		foreach ($accountPlayers as $serverId => $players) {
 			$packet .= $serverId . ',' . $players . '|';
 		}
 
@@ -157,7 +135,7 @@ final class LoginMessageFormatter
 		return 'AXEd';
 	}
 
-	public static function serverRequireSubscription() : string
+	public static function serverRequireSubscription() : array
 	{
 		return ['M120', 'AXE'];
 	}
@@ -167,7 +145,7 @@ final class LoginMessageFormatter
 		return 'AXEF';
 	}
 
-	public static function serverAccess($ipAddress, $port, $ticket) : string
+	public static function serverAccess(string $ipAddress, int $port, string $ticket) : string
 	{
 		return 'AYK' . $ipAddress . ':' . $port . ';' . $ticket;
 	}

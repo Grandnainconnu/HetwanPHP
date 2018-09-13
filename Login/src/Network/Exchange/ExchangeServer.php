@@ -1,15 +1,6 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-08 15:30:21
- * @Last Modified by:   jean
- * @Last Modified time: 2017-09-18 15:07:02
- */
-
 namespace Hetwan\Network\Exchange;
-
-use Hetwan\Network\Exchange\ExchangeClient;
 
 
 trait ClientsPoolManagerTrait

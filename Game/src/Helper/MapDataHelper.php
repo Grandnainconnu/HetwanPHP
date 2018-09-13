@@ -1,90 +1,120 @@
 <?php
 
-/**
- * @Author: jeanw
- * @Date:   2017-10-27 18:09:38
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-31 14:09:04
- */
-
 namespace Hetwan\Helper;
 
-use Hetwan\Network\Game\GameServer;
-
-use Hetwan\Util\Cryptography;
-
-use Hetwan\Loader\MapDataLoader;
-
+use Hetwan\Network\Game\Protocol\Enum\ActionTypeEnum;
 use Hetwan\Network\Game\Protocol\Formatter\GameMessageFormatter;
-use Hetwan\Network\Game\Protocol\Formatter\ItemMessageFormatter;
 use Hetwan\Network\Game\Protocol\Formatter\EnvironementMessageFormatter;
 
 
-class MapDataHelper extends AbstractHelper
+final class MapDataHelper
 {
-	public static function getAreaIdWithMapId(int $mapId)
-	{
-		$subAreaId = MapDataLoader::getMapWithId($mapId)->getSubAreaId();
-		$subArea = self::getGameEntityManager()
-						->getRepository('\Hetwan\Entity\Game\SubAreaData')
-						->findOneById($subAreaId);
+	/**
+	 * @Inject
+	 * @var \Hetwan\Loader\MapDataLoader
+	 */
+	private $mapDataLoader;
 
-		return ($subArea->getAreaId());
+    /**
+     * @Inject
+     * @var \Hetwan\Loader\SubAreaDataLoader
+     */
+    private $subAreaDataLoader;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Helper\Player\PlayerHelper
+	 */
+	private $playerHelper;
+
+	/**
+	 * @Inject
+	 * @var \Hetwan\Network\Game\GameServer
+	 */
+	private $gameServer;
+
+	public function sendToAllPlayers(int $mapId, string $message, array $exceptIds = []) : void
+	{
+		$clients = $this->gameServer->getClientsPool();
+
+		foreach ($clients as $client) {
+			if (($player = $client->getPlayer()) and $player->getMapId() === $mapId and !in_array($player->getId(), $exceptIds)) {
+                $client->send($message);
+            }
+		}
 	}
 
-	public static function addPlayerInMap(int $mapId, $player)
+	public function addPlayer(int $mapId, \Hetwan\Entity\Game\PlayerEntity $player) : void
 	{
-		MapDataLoader::addPlayerInMap($mapId, $player); // Add player to map
+	    if (($map = $this->mapDataLoader->getBy(['id' => $mapId], false, true)) === null) {
+	        return;
+        }
+
+		$map->addPlayer($player); // Add player in map
 
 		// Add player to all players in map
-		GameServer::sendToAllPlayersInMap(
-			$mapId,
-			GameMessageFormatter::showActorsMessage([$player]),
-			[$player->getId()]
-		);
+		$this->sendToAllPlayers($mapId, GameMessageFormatter::showActorsMessage([$player]), [$player->getId()]);
 
 		// Send players in map to current player
-		GameServer::getClientWithPlayer($player->getId())->send(
-			GameMessageFormatter::showActorsMessage(\Hetwan\Loader\MapDataLoader::getPlayersInMap($mapId))
-		);
+		if (($client = $this->playerHelper->getClientWithId($player->getId()))) {
+			$client->send(GameMessageFormatter::showActorsMessage($this->getPlayers($mapId)));
+		}
 	}
 
-	public static function updatePlayerAccessoriesInMap($player)
-	{
-		// Update player accessories for all players in map
-		GameServer::sendToAllPlayersInMap(
-			$player->getMapId(),
-			ItemMessageFormatter::accessoriesMessage($player),
-			[]
-		);
-	}
-
-	public static function movePlayerInMap(int $mapId, $player, string $path)
+	public function movePlayer(int $mapId, \Hetwan\Entity\Game\PlayerEntity $player, string $path) : void
 	{
 		// Send player movement
-		GameServer::sendToAllPlayersInMap(
-			$mapId,
-			GameMessageFormatter::actorMovementMessage($player->getId(), 'a' . Cryptography::cellIdEncode($player->getCellId()) . $path)
-		);
+		$this->sendToAllPlayers($mapId, GameMessageFormatter::actorMovementMessage($player->getId(), 'a' . HashHelper::cellIdEncode($player->getCellId()) . $path));
 
-		$player->setAction(\Hetwan\Network\Game\Protocol\Enum\ActionTypeEnum::MOVEMENT);
+		//$player->setAction(ActionTypeEnum::MOVEMENT);
 	}
 
-	public static function updatePlayerOrientationInMap(int $mapId, $player)
+	public function updatePlayerOrientation(int $mapId, \Hetwan\Entity\Game\PlayerEntity $player) : void
 	{
-		GameServer::sendToAllPlayersInMap(
-			$mapId,
-			EnvironementMessageFormatter::updateActorOrientationMessage($player->getId(), $player->getOrientation())
-		);
+		$this->sendToAllPlayers($mapId, EnvironementMessageFormatter::updateActorOrientationMessage($player->getId(), $player->getOrientation()));
 	}
 
-	public static function removePlayerInMap(int $mapId, $player)
+	public function removePlayer(int $mapId, \Hetwan\Entity\Game\PLayerEntity $player) : void
 	{
-		MapDataLoader::removePlayerInMap($mapId, $player);
+        if (($map = $this->mapDataLoader->getBy(['id' => $mapId], false, true)) === null) {
+            return;
+        }
 
-		GameServer::sendToAllPlayersInMap(
-        	$mapId,
-        	GameMessageFormatter::removeActorsMessage([$player->getId()])
-        );
+        $map->removePlayer($player);
+
+		$this->sendToAllPlayers($mapId, GameMessageFormatter::removeActorsMessage([$player->getId()]));
 	}
+
+	public function teleportPlayer(\Hetwan\Entity\Game\MapDataEntity $mapData, int $cellId, \Hetwan\Network\Game\GameClient $client) : void
+	{
+		$this->removePlayer($client->getPlayer()->getMapId(), $client->getPlayer());
+
+		$client->getPlayer()->setMapId($mapData->getId())
+                            ->setCellId($cellId);
+
+        $client->send(GameMessageFormatter::mapDataMessage($mapData->getId(), $mapData->getDate(), $mapData->getKey()));
+	}
+
+	public function getPlayers(int $mapId) : array
+	{
+	    $players = [];
+
+		if (($map = $this->mapDataLoader->getBy(['id' => $mapId], false, true)) !== null) {
+			$players = $map->getPlayers();
+		}
+
+		return $players;
+	}
+
+    public function getAreaId(int $mapId) : ?int
+    {
+        if (($map = $map = $this->mapDataLoader->getBy(['id' => $mapId], false, true)) === null) {
+            return null;
+        }
+
+        $subAreaId = $map->getSubAreaId();
+        $subArea = $this->subAreaDataLoader->getBy(['id' => $subAreaId], false, true);
+
+        return $subArea->getAreaId();
+    }
 }

@@ -1,20 +1,17 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-16 00:35:30
- * @Last Modified by:   jeanw
- * @Last Modified time: 2017-12-30 20:23:53
- */
-
 namespace Hetwan\Network\Game\Protocol\Formatter;
+
+use Hetwan\Helper\ItemHelper;
+use Hetwan\Helper\Player\PlayerHelper;
+use Hetwan\Network\Game\Protocol\Enum\ItemPositionEnum;
 
 
 trait ActorBuilderTrait
 {
-	public static function buildPlayerActorMessage($actor)
+	private static function buildPlayerActorMessage(\Hetwan\Entity\Game\PlayerEntity $actor)
 	{
-		$colors = explode(';', $actor->getConvertedColors());
+		$colors = explode(';', PlayerHelper::getConvertedColors($actor->getColors()));
 
 		return [
 			$actor->getName(), 
@@ -25,7 +22,7 @@ trait ActorBuilderTrait
 			$colors[0],
 			$colors[1],
 			$colors[2],
-			\Hetwan\Helper\Player\PlayerHelper::getPlayerAccessories($actor),
+			ItemHelper::formatAccessories(ItemHelper::getWithPositions(ItemPositionEnum::ACCESSORY, $actor->getItems())),
 			($actor->getLevel() >= 100) ? ($actor->getLevel() >= 200) ? 200 : 100  : 0,
 			null, //TODO: emotes
 			null, //TODO: emotes timer
@@ -49,7 +46,7 @@ class GameMessageFormatter
 
 	public static function playerLoadedMessage($playerName, $succeed = true)
 	{
-		return 'GCK|' . (int) $succeed . '|' . $playerName;
+		return 'GCK|' . (int)$succeed . '|' . $playerName;
 	}
 
 	public static function playerRegenerationIntervalMessage($interval)
@@ -59,13 +56,11 @@ class GameMessageFormatter
 
 	public static function mapFightCountMessage($fights)
 	{
-		return 'fC' . (int) $fights;
+		return 'fC' . (int)$fights;
 	}
 
-	public static function playerStatisticsMessage($player)
-	{
-		$experience = \Hetwan\Helper\ExperienceDataHelper::getExperience($player->getLevel());
-
+	public static function playerStatisticsMessage(\Hetwan\Entity\Game\PlayerEntity $player, array $experience)
+    {
 		$packet = [
 			'As' . implode(',', [$player->getExperience(), $experience[0]['player'], $experience[1]['player']]),
 			$player->getKamas(), 
@@ -137,8 +132,9 @@ class GameMessageFormatter
 	{
 		$packet = ['GM'];
 
-		foreach ($actors as $actor)
+		foreach ($actors as $actor) {
 			$packet[] = '|+' . implode(';', array_merge([$actor->getCellId(), $actor->getOrientation(), 0, $actor->getId()], self::buildPlayerActorMessage($actor)));
+		}
 
 		return implode('', $packet);
 	}
@@ -147,8 +143,9 @@ class GameMessageFormatter
 	{
 		$packet = ['GM'];
 
-		foreach ($actors as $actor)
+		foreach ($actors as $actor) {
 			$packet[] = '|~' . implode(';', array_merge([$actor->getCellId(), $actor->getOrientation(), 0, $actor->getId()], self::buildPlayerActorMessage($actor)));
+		}
 
 		return implode('', $packet);
 	}
@@ -157,8 +154,9 @@ class GameMessageFormatter
 	{
 		$packet = ['GM'];
 
-		foreach ($actors as $actorId)
+		foreach ($actors as $actorId) {
 			$packet[] = '|-' . $actorId;
+		}
 
 		return implode('', $packet);
 	}

@@ -12,8 +12,13 @@ namespace Hetwan\Core;
 use Symfony\Component\Yaml\Yaml;
 
 
-class Configuration
+final class Configuration
 {	
+	/**
+	 * Configuration attributes
+	 *
+	 * @var array
+	 */
 	private $attrs;
 
 	public function __construct($configFilePath)
@@ -24,11 +29,12 @@ class Configuration
 	public function get($attrPath)
 	{
 		$el = $this->attrs;
+		$attrs = explode('.', $attrPath);
 
-		foreach (explode('.', $attrPath) as $attr)
-		{
-			if (!isset($el[$attr]))
+		foreach ($attrs as $attr) {
+			if (!isset($el[$attr])) {
 				throw new ConfigurationException("Unable to get '{$attrPath}'.\n");
+			}
 
 			$el = $el[$attr];
 		}

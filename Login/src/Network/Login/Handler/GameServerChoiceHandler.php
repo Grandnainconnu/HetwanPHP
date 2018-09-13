@@ -1,15 +1,8 @@
 <?php
 
-/**
- * @Author: jean
- * @Date:   2017-09-07 13:05:15
- * @Last Modified by:   Jean Walrave
- * @Last Modified time: 2018-04-11 14:11:51
- */
-
 namespace Hetwan\Network\Login\Handler;
 
-use Hetwan\Entity\Account;
+use Hetwan\Entity\AccountEntity;
 use Hetwan\Network\Login\Protocol\Enum\ServerState;
 use Hetwan\Network\Login\Protocol\Enum\ServerPopulation;
 use Hetwan\Network\Login\Protocol\Formatter\LoginMessageFormatter;
@@ -19,7 +12,7 @@ final class GameServerChoiceHandler extends \Hetwan\Network\Login\Handler\Base\H
 {
 	/**
 	 * @Inject
-	 * @var \Hetwan\Loader\Server
+	 * @var \Hetwan\Loader\ServerLoader
 	 */
 	private $serverLoader;
 
@@ -33,12 +26,14 @@ final class GameServerChoiceHandler extends \Hetwan\Network\Login\Handler\Base\H
 	{
 		$this->send(LoginMessageFormatter::accountNicknameInformationMessage($this->getAccount()->getNickname()));
 		$this->send(LoginMessageFormatter::accountCommunityInformationMessage($this->getAccount()->getCommunity()));
+
 		$this->refreshServersList();
+
 		$this->send(LoginMessageFormatter::identificationSuccessMessage($this->getAccount()->getGmLevel() > 0 ? 1 : 0));
 		$this->send(LoginMessageFormatter::accountSecretQuestionInformationMessage($this->getAccount()->getSecretQuestion()));
 	}
 
-	public function handle($data) : bool
+	public function handle(string $data) : bool
 	{
 		switch (substr($data, 1, 1)) {
 			case 'f':
@@ -74,10 +69,10 @@ final class GameServerChoiceHandler extends \Hetwan\Network\Login\Handler\Base\H
 		));
 	}
 
-	private function searchPlayersByAccountNickname($nickname) : void
+	private function searchPlayersByAccountNickname(string $nickname) : void
 	{
 		$account = $this->entityManager->get()
-								   	   ->getRepository(Account::class)
+								   	   ->getRepository(AccountEntity::class)
 								   	   ->findOneByNickname($nickname);
 
 		$this->send(LoginMessageFormatter::searchPlayersMessage($account ? $account->getPlayers() : []));

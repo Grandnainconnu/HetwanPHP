@@ -1,9 +1,7 @@
 # HetwanPHP
-Dofus 1.29.1 emulator written with PHP 7
+Dofus 1.29.1 emulator written with PHP 7+
 
 # Installation
-Uncompress on both ```Game``` and ```Login``` folders: ```vendor/cboden.rar``` and ```vendor/react.rar```
-
 $> php composer.phar install
 
 $> php composer.phar dump-autoload
@@ -21,6 +19,6 @@ Edit ```Login\app\config\config.yml``` and ```Game\app\config\config.yml``` file
 # Launch
 From two separted terminals:
 
-$> php Login/Hetwan.php
+$> sudo php Login/Hetwan.php
 
-$> php Game/Hetwan.php
+$> sudo php Game/Hetwan.php
